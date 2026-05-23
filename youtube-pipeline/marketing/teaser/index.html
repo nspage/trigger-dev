@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Local YouTube Knowledge Pipeline - HyperFrames Teaser</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <!-- Need Google Fonts for premium vibe -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- HyperFrames Composition Root -->
+  <div id="teaser-comp" 
+       data-composition-id="teaser" 
+       data-width="1920" 
+       data-height="1080" 
+       data-start="0" 
+       data-duration="10">
+       
+    <!-- SCENE 1: The Input & The Synthesis -->
+    <div id="scene1" class="scene">
+      <div class="ui-mockup" id="s1-ui">
+        <div class="ui-header">Pipeline</div>
+        <div class="ui-tabs">
+          <span class="active">Pending</span>
+          <span>History</span>
+        </div>
+        <div class="ui-list">
+          <div class="ui-card">Processing: Lex Fridman #334...</div>
+          <div class="ui-card">Processing: Karpathy LLM OS...</div>
+        </div>
+      </div>
+      
+      <div class="data-container" id="s1-data">
+        <div class="raw-text" id="raw-text">
+so basically what we are trying to do is take all of this unstructured text that comes from youtube transcripts and run it through a large language model like gemini to figure out what the core concepts are and extract them into a structured markdown document because right now if you want to remember what was said in a two hour podcast you have to go back and watch the whole thing or scrub through it which is a huge waste of time but if we have this pipeline running locally on our machine using docker and trigger dot dev we can actually build a persistent knowledge base that compounds over time instead of just forgetting everything after we close the browser window...
+so basically what we are trying to do is take all of this unstructured text that comes from youtube transcripts and run it through a large language model like gemini to figure out what the core concepts are and extract them into a structured markdown document because right now if you want to remember what was said in a two hour podcast you have to go back and watch the whole thing or scrub through it which is a huge waste of time but if we have this pipeline running locally on our machine using docker and trigger dot dev we can actually build a persistent knowledge base that compounds over time instead of just forgetting everything after we close the browser window...
+        </div>
+        <div class="markdown-text" id="markdown-text">
+          <h1>Building a Local LLM Knowledge Base</h1>
+          <p>Extracting high-signal data from unstructured YouTube transcripts.</p>
+          <h2>Core Concepts</h2>
+          <ul>
+            <li><strong>Data Source</strong>: YouTube transcripts via PubSubHubbub.</li>
+            <li><strong>Processing</strong>: Gemini LLM for synthesis.</li>
+            <li><strong>Orchestration</strong>: Trigger.dev running locally in Docker.</li>
+          </ul>
+          <h2>Outcome</h2>
+          <p>A persistent, interlinked Markdown vault that compounds over time, preventing context loss and enabling powerful search.</p>
+        </div>
+        <div class="scanline" id="scanline"></div>
+      </div>
+      
+      <div class="caption caption-large" id="cap1">From noise to signal.</div>
+    </div>
+    
+    <!-- SCENE 2: Community Validation (X Posts) -->
+    <div id="scene2" class="scene hidden">
+      <div class="x-post" id="xp1">
+        <div class="x-header">
+          <div class="x-avatar"></div>
+          <div class="x-meta">
+            <span class="x-name">Super Socks</span>
+            <span class="x-handle">@iamsupersocks</span>
+          </div>
+        </div>
+        <div class="x-content">This is a game changer for research. I don't have to watch 2-hour podcasts anymore.</div>
+      </div>
+      <div class="x-post" id="xp2">
+        <div class="x-header">
+          <div class="x-avatar"></div>
+          <div class="x-meta">
+            <span class="x-name">Brendan Boyle</span>
+            <span class="x-handle">@brendanboyle87</span>
+          </div>
+        </div>
+        <div class="x-content">The markdown output is insanely clean. The structure makes it so easy to search.</div>
+      </div>
+      <div class="x-post" id="xp3">
+        <div class="x-header">
+          <div class="x-avatar"></div>
+          <div class="x-meta">
+            <span class="x-name">Agentic Girl</span>
+            <span class="x-handle">@agenticgirl</span>
+          </div>
+        </div>
+        <div class="x-content">Finally, local-first knowledge extraction that actually works. Trigger.dev + Gemini is the ultimate stack.</div>
+      </div>
+      <div class="x-post" id="xp4">
+        <div class="x-header">
+          <div class="x-avatar"></div>
+          <div class="x-meta">
+            <span class="x-name">Sandy Mac</span>
+            <span class="x-handle">@Sandymac1000</span>
+          </div>
+        </div>
+        <div class="x-content">I've processed 100+ videos. It’s like having a second brain that watches YouTube for me.</div>
+      </div>
+      <div class="x-post" id="xp5">
+        <div class="x-header">
+          <div class="x-avatar"></div>
+          <div class="x-meta">
+            <span class="x-name">BedRock Docs</span>
+            <span class="x-handle">@BedRockDocs</span>
+          </div>
+        </div>
+        <div class="x-content">This is how you build a real ecosystem. Pure signal, zero noise.</div>
+      </div>
+      
+      <div class="caption caption-large" id="cap2">The community agrees.</div>
+    </div>
+    
+    <!-- SCENE 3: The Ecosystem -->
+    <div id="scene3" class="scene hidden">
+      <!-- Graph Canvas -->
+      <svg id="graph-svg" viewBox="0 0 1920 1080">
+        <!-- Lines will be drawn here -->
+        <path class="graph-link" d="M960,540 L600,300" />
+        <path class="graph-link" d="M960,540 L1300,250" />
+        <path class="graph-link" d="M960,540 L1400,700" />
+        <path class="graph-link" d="M960,540 L500,800" />
+        <path class="graph-link" d="M600,300 L1300,250" />
+        <path class="graph-link" d="M500,800 L600,300" />
+        
+        <path class="graph-link" d="M1300,250 L1600,400" />
+        <path class="graph-link" d="M1400,700 L1600,400" />
+        <path class="graph-link" d="M500,800 L300,600" />
+      </svg>
+      
+      <div id="graph-nodes">
+        <div class="node center-node" id="main-node">
+          <h1>Local LLM KB</h1>
+        </div>
+        <div class="node" id="n1" style="top:300px; left:600px;">Lex #334</div>
+        <div class="node" id="n2" style="top:250px; left:1300px;">LLM OS</div>
+        <div class="node" id="n3" style="top:700px; left:1400px;">Docker</div>
+        <div class="node" id="n4" style="top:800px; left:500px;">Trigger.dev</div>
+        <div class="node" id="n5" style="top:400px; left:1600px;">Gemini API</div>
+        <div class="node" id="n6" style="top:600px; left:300px;">PubSubHubbub</div>
+      </div>
+      
+      <div class="ui-mockup side-panel" id="s3-ui-1">
+        <div class="ui-header">Channels</div>
+        <div class="ui-list">
+          <div class="ui-card">Lex Fridman</div>
+          <div class="ui-card">Andrej Karpathy</div>
+        </div>
+      </div>
+      <div class="ui-mockup side-panel" id="s3-ui-2">
+        <div class="ui-header">History</div>
+        <div class="ui-list">
+          <div class="ui-card">Processed: Lex #334</div>
+          <div class="ui-card">Processed: LLM OS</div>
+        </div>
+      </div>
+      
+      <div class="caption caption-large" id="cap3">Your personal knowledge ecosystem.</div>
+    </div>
+    
+  </div>
+
+  <script src="animation.js"></script>
+</body>
+</html>

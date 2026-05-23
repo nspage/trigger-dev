@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pipeline Queue</title>
+  <style>
+    :root {
+      --bg: #0e0f11;
+      --bg-card: #18191d;
+      --bg-hover: #212328;
+      --border: #282a30;
+      --text-main: #ededed;
+      --text-muted: #8b8f98;
+      --accent: #5e6ad2;
+      --green: #4ade80;
+      --red: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 360px;
+      height: 480px;
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+    }
+    .header-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--text-main); }
+    .tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .badge {
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      margin-left: 4px;
+    }
+
+    /* Add Channel Form */
+    .add-channel {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .input, .select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      outline: none;
+    }
+    .input { flex-grow: 1; min-width: 0; }
+    .select { width: 95px; }
+    .input:focus, .select:focus { border-color: var(--accent); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+
+    /* Views */
+    .view { display: none; flex-direction: column; flex-grow: 1; overflow: hidden; }
+    .view.active { display: flex; }
+
+    /* States */
+    .loading, .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-grow: 1;
+      color: var(--text-muted);
+    }
+    .hidden { display: none !important; }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-icon {
+      width: 32px;
+      height: 32px;
+      opacity: 0.3;
+      margin-bottom: 8px;
+    }
+    .empty-text { font-size: 12px; font-weight: 500; }
+
+    /* List */
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      flex-grow: 1;
+      padding-right: 4px;
+      padding-bottom: 8px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      position: relative;
+      transition: background 0.15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .card:hover { background: var(--bg-hover); }
+
+    .card-content { padding-right: 48px; }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    
+    .card-title.clickable {
+      cursor: pointer;
+    }
+    .card-title.clickable:hover {
+      text-decoration: underline;
+      color: var(--accent);
+    }
+    .card-title.single-line {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .card-duration {
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-right: 2px;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .card-channel {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+    .card-category {
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Actions */
+    .actions {
+      position: absolute;
+      right: 8px;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .actions-top {
+      justify-content: flex-start;
+      padding-top: 10px;
+    }
+    .card:hover .actions { opacity: 1; }
+
+    .btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn svg { width: 16px; height: 16px; }
+    .btn-approve:hover { color: var(--green); background: rgba(74, 222, 128, 0.1); }
+    .btn-discard:hover { color: var(--red); background: rgba(248, 113, 113, 0.1); }
+
+    /* Accordion */
+    .card-accordion-content {
+      display: none;
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    .card.expanded .card-accordion-content {
+      display: block;
+    }
+    .prompt-textarea {
+      width: 100%;
+      height: 150px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      resize: vertical;
+      outline: none;
+      margin-bottom: 8px;
+    }
+    .prompt-textarea:focus {
+      border-color: var(--accent);
+    }
+    .btn-save {
+      background: rgba(74, 222, 128, 0.1);
+      color: var(--green);
+      border: 1px solid rgba(74, 222, 128, 0.2);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.15s;
+    }
+    .btn-save:hover { background: rgba(74, 222, 128, 0.2); }
+
+    /* New Category Select & Re-classify Styles */
+    .card-category-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 9px;
+      text-transform: uppercase;
+      outline: none;
+      cursor: pointer;
+      padding: 1px 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+    .card-category-select:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+    .card-category-select:focus {
+      border-color: var(--accent);
+    }
+
+    @keyframes spin-loader {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .btn-reclassify.spinning svg {
+      animation: spin-loader 0.8s linear infinite;
+      color: var(--accent) !important;
+    }
+
+    /* Pinned System Prompt Card Styling */
+    .card-pinned {
+      background: linear-gradient(135deg, rgba(94, 106, 210, 0.12) 0%, rgba(24, 25, 29, 0.8) 100%) !important;
+      border: 1.5px dashed rgba(94, 106, 210, 0.5) !important;
+      box-shadow: 0 4px 12px rgba(94, 106, 210, 0.15) !important;
+      margin-bottom: 8px;
+    }
+    .card-pinned:hover {
+      background: linear-gradient(135deg, rgba(94, 106, 210, 0.18) 0%, rgba(33, 35, 40, 0.8) 100%) !important;
+      border-color: rgba(94, 106, 210, 0.7) !important;
+    }
+    .badge-pinned {
+      background: rgba(94, 106, 210, 0.2) !important;
+      color: #c4ccff !important;
+      border: 1px solid rgba(94, 106, 210, 0.4) !important;
+    }
+
+    /* History Unread Card Highlighting */
+    .card-unread {
+      border-left: 3px solid var(--accent) !important;
+      background: rgba(94, 106, 210, 0.04) !important;
+    }
+    .card-unread::after {
+      content: "NEW";
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 8px;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(94, 106, 210, 0.15);
+      padding: 1px 4px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Channels Edit Mode visual indicator */
+    .card.editing {
+      border-color: var(--accent) !important;
+      background: var(--bg-hover) !important;
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="header" style="justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg class="header-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+      <div class="header-title">Pipeline</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 10px; color: var(--text-muted);">
+      <span id="daily-cost" style="font-weight: 600; color: var(--green);">$0.00</span>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <input type="checkbox" id="send-tg" checked />
+        <label for="send-tg" style="cursor: pointer;">Telegram</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-target="view-queue">Pending <span id="queue-count" class="badge">0</span></div>
+    <div class="tab" data-target="view-channels">Channels <span id="channels-count" class="badge">0</span></div>
+    <div class="tab" data-target="view-categories">Categories <span id="categories-count" class="badge">0</span></div>
+    <div class="tab" data-target="view-history">History <span id="history-count" class="badge">0</span></div>
+  </div>
+
+  <!-- QUEUE VIEW -->
+  <div id="view-queue" class="view active">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+    <div id="empty-state" class="empty hidden">
+      <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <div class="empty-text">Queue is empty</div>
+    </div>
+    <div id="queue-list" class="list"></div>
+  </div>
+
+  <!-- CHANNELS VIEW -->
+  <div id="view-channels" class="view">
+    <div class="add-channel">
+      <input type="text" id="channel-url" class="input" placeholder="YouTube Channel URL" />
+      <select id="channel-cat" class="select">
+        <option value="">Loading...</option>
+      </select>
+      <button id="add-channel-btn" class="btn-primary">Track</button>
+    </div>
+    <div id="channels-loading" class="loading"><div class="spinner"></div></div>
+    <div id="channels-empty-state" class="empty hidden">
+      <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+      <div class="empty-text">No tracked channels</div>
+    </div>
+    <div id="channels-list" class="list"></div>
+  </div>
+
+  <!-- CATEGORIES VIEW -->
+  <div id="view-categories" class="view">
+    <div class="add-channel" style="margin-bottom: 8px;">
+      <input type="text" id="new-category-name" class="input" placeholder="New Category Name" />
+      <button id="add-category-btn" class="btn-primary" style="width: 60px;">Add</button>
+    </div>
+    <div id="categories-loading" class="loading"><div class="spinner"></div></div>
+    <div id="categories-empty-state" class="empty hidden">
+      <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+      <div class="empty-text">No categories</div>
+    </div>
+    <div id="categories-list" class="list"></div>
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div id="view-history" class="view">
+    <div id="history-loading" class="loading"><div class="spinner"></div></div>
+    <div id="history-empty-state" class="empty hidden">
+      <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <div class="empty-text">No processed videos</div>
+    </div>
+    <div id="history-list" class="list"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

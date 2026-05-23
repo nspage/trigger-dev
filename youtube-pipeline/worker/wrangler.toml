@@ -1,0 +1,16 @@
+name = "yt-pipeline-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# Cloudflare KV namespace binding
+[[kv_namespaces]]
+binding = "YT_KV"
+id = "a9b83d06114e49e8b8894a39f396387e" # ← Fill after creating: wrangler kv namespace create YT_PIPELINE
+
+[vars]
+# These are set via wrangler secret (not committed):
+# TRIGGER_SECRET_KEY
+# TRIGGER_API_URL
+# WORKER_API_SECRET
+# TELEGRAM_BOT_TOKEN
+# TELEGRAM_CHAT_ID

@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+    <title>YT LLM Chrome Extension Demo - Pending Queue</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- GSAP Animation Library -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #0e0f11;
+            --bg-card: #18191d;
+            --accent: #5e6ad2;
+            --accent-glow: rgba(94, 106, 210, 0.15);
+            --text-main: #ededed;
+            --text-muted: #8b8f98;
+            --success: #4ade80;
+            --alert: #f87171;
+            --border-color: #282a30;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .composition-root {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        /* Ambient glows and decoration */
+        .ambient-glow {
+            position: absolute;
+            width: 1400px;
+            height: 1400px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, rgba(14, 15, 17, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            top: -200px;
+            right: -200px;
+        }
+
+        .coord-overlay {
+            position: absolute;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            color: var(--text-muted);
+            opacity: 0.3;
+            z-index: 10;
+        }
+
+        /* Mock Web Browser Shell */
+        .browser-window {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            z-index: 2;
+        }
+
+        /* Chrome Top Header */
+        .browser-header {
+            height: 80px;
+            background: #1e1f22;
+            border-bottom: 2px solid #2d2f34;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            box-sizing: border-box;
+            gap: 20px;
+            z-index: 5;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--border-color);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .browser-tabs {
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+            height: 100%;
+            padding-top: 15px;
+            box-sizing: border-box;
+        }
+
+        .browser-tab {
+            background: #141517;
+            height: 38px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid #2d2f34;
+            border-bottom: none;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        .browser-tab.active {
+            background: #0f0f0f;
+            color: var(--text-main);
+            border-color: var(--accent);
+        }
+
+        .address-bar-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            background: #0f0f0f;
+            border: 2px solid #2d2f34;
+            height: 40px;
+            padding: 0 16px;
+            gap: 12px;
+        }
+
+        .address-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--text-muted);
+            width: 100%;
+        }
+
+        .address-text span {
+            color: var(--text-main);
+        }
+
+        .browser-extensions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .ext-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        .ext-icon.active {
+            color: var(--accent);
+        }
+
+        /* Mock YouTube Background UI (Blurred) */
+        .youtube-viewport {
+            flex-grow: 1;
+            background: #0f0f0f;
+            padding: 40px;
+            display: flex;
+            gap: 30px;
+            filter: blur(12px) brightness(0.25);
+            pointer-events: none;
+            box-sizing: border-box;
+        }
+
+        .yt-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .yt-player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #1c1d21;
+            border: 2px solid #2d2f34;
+        }
+
+        .yt-sidebar {
+            width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .yt-card {
+            height: 120px;
+            background: #1c1d21;
+            border: 2px solid #2d2f34;
+        }
+
+        /* Chrome Extension Popup */
+        .extension-popup {
+            position: absolute;
+            right: 80px;
+            top: 90px;
+            width: 480px;
+            height: 760px;
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            box-shadow: 0 25px 80px rgba(0,0,0,0.8), 0 0 40px rgba(94, 106, 210, 0.15);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        /* Extension Header */
+        .ext-header {
+            padding: 20px 24px;
+            border-bottom: 2px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .ext-brand {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ext-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ext-logo {
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .ext-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--success);
+            background: rgba(74, 222, 128, 0.1);
+            padding: 2px 8px;
+            border: 1px solid var(--success);
+        }
+
+        /* Extension Tabs */
+        .ext-tabs {
+            display: flex;
+            border: 2px solid var(--border-color);
+            height: 42px;
+        }
+
+        .ext-tab {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-right: 2px solid var(--border-color);
+            background: #121316;
+            cursor: pointer;
+        }
+
+        .ext-tab:last-child {
+            border-right: none;
+        }
+
+        .ext-tab.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: -2px;
+            z-index: 2;
+        }
+
+        /* Extension Panel Area */
+        .ext-content {
+            flex-grow: 1;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-scene {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            bottom: 24px;
+            opacity: 0;
+            visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-scene.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Common Components */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .video-item {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+
+        .video-item.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(94, 106, 210, 0.1);
+        }
+
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .video-title {
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .action-button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            height: 48px;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .action-button.success-state {
+            background: var(--success);
+            color: #0c0d0f;
+        }
+
+        /* Progress indicator overlay */
+        .progress-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            width: 0%;
+            background: var(--accent);
+        }
+
+        /* History Card */
+        .history-card {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .history-card.active-download {
+            border-color: var(--success);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.1);
+        }
+
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+        }
+
+        .card-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .card-format {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Input Elements */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .text-input {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            height: 44px;
+            padding: 0 16px;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Channels list */
+        .channels-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .channel-row {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .channel-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .channel-avatar {
+            width: 36px;
+            height: 36px;
+            background: #282a30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .channel-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .channel-subscribers {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .badge.active-badge {
+            color: var(--success);
+            background: rgba(74, 222, 128, 0.1);
+            border-color: var(--success);
+        }
+
+        /* Grid Categories */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .category-box {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            padding: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .category-box.new-box {
+            border-color: var(--accent);
+            color: var(--accent);
+            border-style: dashed;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        /* Dropdown selector */
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .custom-select {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            height: 44px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .select-dropdown-list {
+            position: absolute;
+            top: 48px;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+        }
+
+        .dropdown-option {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .dropdown-option.active {
+            color: var(--text-main);
+            background: #1c1d21;
+        }
+
+        /* Prompt Editor Card */
+        .prompt-editor-card {
+            background: #111215;
+            border: 2px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            cursor: pointer;
+            transition: height 0.4s ease;
+            height: 72px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .prompt-textarea {
+            background: #090a0c;
+            border: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 12px;
+            height: 120px;
+            resize: none;
+            outline: none;
+        }
+
+        /* Toast Notifications */
+        .toast-notification {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            background: var(--bg-card);
+            border: 2px solid var(--success);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--text-main);
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(30px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        /* Virtual Cursor */
+        .virtual-cursor {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            z-index: 9999;
+            pointer-events: none;
+            transform: translate(-14px, -14px);
+        }
+
+        .virtual-cursor svg {
+            fill: var(--accent);
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+        }
+
+        .cursor-pulse {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            top: -6px;
+            left: -6px;
+            opacity: 0;
+            transform: scale(0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="composition-root" 
+         id="extension-demo" 
+         data-composition-id="pending-tab" 
+         data-width="1920" 
+         data-height="1080" 
+         data-start="0" 
+         data-duration="5">
+        
+        <div class="ambient-glow"></div>
+
+        <!-- Corner Blueprint Labels -->
+        <div class="coord-overlay" style="top: 40px; left: 40px;">X: 1920 Y: 1080</div>
+        <div class="coord-overlay time-label" style="top: 40px; right: 40px;">T: 00.00S</div>
+        <div class="coord-overlay" style="bottom: 40px; left: 40px;">RESOLUTION: 1080P</div>
+        <div class="coord-overlay" style="bottom: 40px; right: 40px;">MODULE: PENDING-TAB</div>
+
+        <!-- Virtual Cursor -->
+        <div class="virtual-cursor" id="cursor">
+            <svg viewBox="0 0 24 24" width="28" height="28">
+                <path d="M4.5 3v15.2l3.8-3.8 2.6 6 2.3-1-2.6-5.9 4.6-.2L4.5 3z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <div class="cursor-pulse" id="cursor-pulse"></div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-notification" id="toast-analysis">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            <span>📥 Defi_Lending_Analysis.md downloaded successfully.</span>
+        </div>
+
+        <!-- Mock Web Browser window -->
+        <div class="browser-window">
+            <div class="browser-header">
+                <div class="window-controls">
+                    <div class="control-dot"></div>
+                    <div class="control-dot"></div>
+                    <div class="control-dot"></div>
+                </div>
+                
+                <div class="browser-tabs">
+                    <div class="browser-tab">
+                        <span>YouTube</span>
+                    </div>
+                    <div class="browser-tab active">
+                        <span>DeFi Lending Explained - YouTube</span>
+                    </div>
+                </div>
+
+                <div class="address-bar-container">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <div class="address-text">https://<span>youtube.com/watch?v=DeFi-Lending-Explained</span></div>
+                </div>
+
+                <div class="browser-extensions">
+                    <div class="ext-icon active" id="ext-trigger-anchor">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YouTube background content -->
+            <div class="youtube-viewport">
+                <div class="yt-main">
+                    <div class="yt-player"></div>
+                    <div style="height: 40px; background: #1c1d21; width: 70%;"></div>
+                    <div style="height: 120px; background: #1c1d21; width: 100%;"></div>
+                </div>
+                <div class="yt-sidebar">
+                    <div class="yt-card"></div>
+                    <div class="yt-card"></div>
+                    <div class="yt-card"></div>
+                    <div class="yt-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chrome Extension Popup -->
+        <div class="extension-popup" id="ext-popup">
+            <div class="ext-header">
+                <div class="ext-brand">
+                    <div class="ext-title">
+                        <div class="ext-logo">⚡</div>
+                        <span>YT LLM Assistant</span>
+                    </div>
+                    <div class="ext-status">LOCAL WORKER ACTIVE</div>
+                </div>
+                
+                <div class="ext-tabs">
+                    <div class="ext-tab active" id="tab-pending">PENDING</div>
+                    <div class="ext-tab" id="tab-channels">CHANNELS</div>
+                    <div class="ext-tab" id="tab-config">CONFIG</div>
+                    <div class="ext-tab" id="tab-history">HISTORY</div>
+                </div>
+            </div>
+
+            <div class="ext-content">
+                <!-- SCENE 1: PENDING TABS & HISTORY TRANSITION -->
+                <div class="panel-scene active" id="scene-pending">
+                    <div class="section-title">Queue (1)</div>
+                    <div class="video-item" id="pending-video-card">
+                        <div class="video-meta">
+                            <span>DeFi Explained</span>
+                            <span>14:32</span>
+                        </div>
+                        <div class="video-title" id="video-title-text">How Spark Is Rebuilding DeFi Lending</div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-top: 4px;" id="item-status-text">READY FOR INGESTION</div>
+                        <div class="progress-overlay" id="process-progress"></div>
+                    </div>
+
+                    <button class="action-button" id="btn-process">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        <span>PROCESS SELECTION</span>
+                    </button>
+                </div>
+
+                <div class="panel-scene" id="scene-history">
+                    <div class="section-title">Completed (2)</div>
+                    
+                    <div class="history-card" id="history-analysis">
+                        <div class="card-info">
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="card-title">Spark_DeFi_Analysis.md</div>
+                                <div class="card-format">Markdown Document • 14.2 KB</div>
+                            </div>
+                        </div>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                    </div>
+
+                    <div class="history-card" id="history-transcript">
+                        <div class="card-info">
+                            <div class="card-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="card-title">Spark_DeFi_Transcript.txt</div>
+                                <div class="card-format">Plain Text File • 28.5 KB</div>
+                            </div>
+                        </div>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Animation Script -->
+    <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Global coordination timer readout
+        tl.to({}, {
+            duration: 5,
+            onUpdate: function() {
+                const time = tl.time().toFixed(2);
+                document.querySelector('.time-label').innerText = `T: ${time.padStart(5, '0')}S`;
+            }
+        }, 0);
+
+        // UI Element References
+        const popup = "#ext-popup";
+        const cursor = "#cursor";
+        const cursorPulse = "#cursor-pulse";
+
+        // Tab References
+        const tabPending = "#tab-pending";
+        const tabChannels = "#tab-channels";
+        const tabConfig = "#tab-config";
+        const tabHistory = "#tab-history";
+
+        // Panel References
+        const panelPending = "#scene-pending";
+        const panelChannels = "#scene-channels";
+        const panelConfig = "#scene-config";
+        const panelHistory = "#scene-history";
+
+        // --- PRE-FLIGHT INITIAL STATES ---
+        gsap.set(popup, { opacity: 0, y: -20 });
+        gsap.set(cursor, { x: 960, y: 540 });
+
+        // --- ENTRY & OPEN POPUP (0.0s - 0.8s) ---
+        tl.to(popup, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.2);
+        // Move cursor to first video item to select it
+        tl.to(cursor, { x: 1580, y: 350, duration: 0.8, ease: "power2.inOut" }, 0.4);
+
+        // Hover video item (1.2s)
+        tl.to("#pending-video-card", { borderColor: "#5e6ad2", duration: 0.2 }, 1.2);
+        tl.to(cursorPulse, { opacity: 0.6, scale: 1.2, duration: 0.1, yoyo: true, repeat: 1 }, 1.3);
+        tl.set("#pending-video-card", { className: "video-item selected" }, 1.3);
+
+        // Move to PROCESS button
+        tl.to(cursor, { x: 1580, y: 770, duration: 0.5, ease: "power2.inOut" }, 1.5);
+        
+        // Click PROCESS button (2.0s)
+        tl.to(cursorPulse, { opacity: 0.6, scale: 1.2, duration: 0.1, yoyo: true, repeat: 1 }, 2.0);
+        tl.to("#btn-process", { scale: 0.96, duration: 0.05, yoyo: true, repeat: 1 }, 2.0);
+        tl.to("#item-status-text", { textContent: "PROCESSING TRANSCRIPT VIA LOCAL WORKER (24%)...", color: "#8b8f98", duration: 0.1 }, 2.1);
+        
+        // Animate processing bar (2.1s - 3.2s)
+        tl.to("#process-progress", { width: "100%", duration: 1.1, ease: "power1.inOut" }, 2.1);
+        tl.to("#item-status-text", { textContent: "COMPLETED & SYNCHRONIZED", color: "#4ade80", duration: 0.1 }, 3.2);
+        tl.to("#pending-video-card", { borderColor: "#4ade80", duration: 0.3 }, 3.2);
+        tl.to("#btn-process", { backgroundColor: "#4ade80", color: "#0c0d0f", textContent: "PROCESS SELECTION COMPLETE", duration: 0.2 }, 3.2);
+
+        // Move cursor to HISTORY tab
+        tl.to(cursor, { x: 1780, y: 195, duration: 0.5, ease: "power2.inOut" }, 3.4);
+        
+        // Click HISTORY tab (3.9s)
+        tl.to(cursorPulse, { opacity: 0.6, scale: 1.2, duration: 0.1, yoyo: true, repeat: 1 }, 3.9);
+        tl.set([tabPending, panelPending], { className: (i, el) => el.id.startsWith("tab") ? "ext-tab" : "panel-scene" }, 4.0);
+        tl.set([tabHistory, panelHistory], { className: (i, el) => el.id.startsWith("tab") ? "ext-tab active" : "panel-scene active" }, 4.0);
+
+        // Move to Spark_DeFi_Analysis.md download card
+        tl.to(cursor, { x: 1580, y: 310, duration: 0.4, ease: "power2.inOut" }, 4.1);
+
+        // Click Analysis Card (4.5s)
+        tl.to(cursorPulse, { opacity: 0.6, scale: 1.2, duration: 0.1, yoyo: true, repeat: 1 }, 4.5);
+        tl.to("#history-analysis", { borderColor: "#4ade80", duration: 0.1 }, 4.5);
+        tl.to("#toast-analysis", { opacity: 1, y: 0, duration: 0.3, ease: "back.out" }, 4.5);
+
+        // End fade out of composition
+        tl.to("#extension-demo", { opacity: 0, duration: 0.3 }, 4.7);
+
+        // Register timeline globally for HyperFrames renderer
+        window.__timelines["pending-tab"] = tl;
+    </script>
+</body>
+</html>

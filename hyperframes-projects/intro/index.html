@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+    <title>YT LLM Pipeline Assistant Intro</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #0e0f11;
+            --bg-card: #18191d;
+            --accent: #5e6ad2;
+            --text-main: #ededed;
+            --text-muted: #8b8f98;
+            --success: #4ade80;
+            --alert: #f87171;
+        }
+
+        body {
+            margin: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: 'Geist', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .composition-root {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+        }
+
+        .scene {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 120px;
+            box-sizing: border-box;
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .scene.active {
+            opacity: 1;
+        }
+
+        /* Atmosphere */
+        .glow {
+            position: absolute;
+            width: 1200px;
+            height: 1200px;
+            background: radial-gradient(circle, rgba(94, 106, 210, 0.15) 0%, rgba(14, 15, 17, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .coord-label {
+            position: absolute;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            color: var(--text-muted);
+            opacity: 0.4;
+            z-index: 5;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 110px;
+            font-weight: 900;
+            margin: 0;
+            line-height: 1.1;
+            text-transform: uppercase;
+            letter-spacing: -0.04em;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 32px;
+            color: var(--text-muted);
+            margin-top: 24px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Scene 1: Extraction */
+        .wireframe {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border: 2px solid var(--accent);
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        .snippet {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            color: var(--accent);
+            opacity: 0.3;
+            position: absolute;
+        }
+
+        /* Scene 2: Noise */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 1000px;
+            margin-top: 40px;
+        }
+
+        .grid-box {
+            background: var(--bg-card);
+            aspect-ratio: 16/9;
+            border: 2px solid var(--bg-card);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ip-block {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            background: var(--alert);
+            color: white;
+            padding: 4px 12px;
+            font-size: 14px;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+        }
+
+        /* Scene 3: Architecture */
+        .nodes-container {
+            display: flex;
+            align-items: center;
+            gap: 120px;
+            margin-top: 60px;
+            position: relative;
+        }
+
+        .node {
+            width: 160px;
+            height: 160px;
+            background: var(--bg-card);
+            border: 3px solid var(--accent);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .node-label {
+            position: absolute;
+            bottom: -40px;
+            font-size: 18px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .connector {
+            position: absolute;
+            height: 3px;
+            background: var(--accent);
+            z-index: 1;
+            transform-origin: left center;
+        }
+
+        /* Scene 4: Dashboard */
+        .popup-card {
+            background: var(--bg-card);
+            width: 480px;
+            height: 640px;
+            border: 3px solid var(--accent);
+            padding: 40px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .popup-header {
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-item {
+            background: var(--bg);
+            height: 80px;
+            border: 2px solid #282a30;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .popup-btn {
+            background: var(--accent);
+            height: 50px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+        }
+
+        /* Scene 5: Outro */
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-mark {
+            width: 120px;
+            height: 120px;
+            background: var(--accent);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 60px;
+            font-weight: 900;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="intro-comp" 
+         data-composition-id="intro" 
+         data-width="1920" 
+         data-height="1080" 
+         data-start="0" 
+         data-duration="30">
+        
+        <div class="glow" id="main-glow"></div>
+        
+        <div class="coord-label" style="top: 60px; left: 60px;">X: 000 Y: 000</div>
+        <div class="coord-label" style="top: 60px; right: 60px;">T: 00.00S</div>
+        <div class="coord-label" style="bottom: 60px; left: 60px;">RES: 1920X1080</div>
+        <div class="coord-label" style="bottom: 60px; right: 60px;">CH: ALPHA-V4</div>
+
+        <!-- Scene 1: Extraction -->
+        <div id="scene1" class="scene active" data-layout-allow-overflow>
+            <div class="wireframe" id="w1"></div>
+            <div class="wireframe" id="w2"></div>
+            <div class="snippet" style="top: 20%; left: 15%;">VIDEO_ID: dQw4w9WgXcQ</div>
+            <div class="snippet" style="bottom: 30%; right: 20%;">PIPELINE_STATUS: INGESTING...</div>
+            <div class="snippet" style="top: 40%; right: 10%;">IP_ADDR: 127.0.0.1</div>
+            <h1 id="s1-title">Extract<br>High-Signal<br>Knowledge</h1>
+            <div class="subtitle">Bypass the Noise. Automate Research.</div>
+        </div>
+
+        <!-- Scene 2: Noise -->
+        <div id="scene2" class="scene" data-layout-allow-overflow>
+            <h1 id="s2-title">Skip the Noise</h1>
+            <div class="grid" id="noise-grid" data-layout-allow-overflow>
+                <div class="grid-box"><div class="ip-block">IP BLOCKED</div></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"><div class="ip-block">IP BLOCKED</div></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"><div class="ip-block">IP BLOCKED</div></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"><div class="ip-block">IP BLOCKED</div></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"></div>
+                <div class="grid-box"><div class="ip-block">IP BLOCKED</div></div>
+            </div>
+        </div>
+
+        <!-- Scene 3: Architecture -->
+        <div id="scene3" class="scene" data-layout-allow-overflow>
+            <h1>Process Locally</h1>
+            <div class="subtitle">Bypass YouTube Server Restrictions</div>
+            <div class="nodes-container">
+                <div class="connector" style="width: 120px; left: 160px; top: 80px;"></div>
+                <div class="connector" style="width: 120px; left: 440px; top: 80px;"></div>
+                <div class="connector" style="width: 120px; left: 720px; top: 80px;"></div>
+                
+                <div class="node" id="n1"><div class="node-label" data-layout-allow-overflow>CF WORKER</div><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+                <div class="node" id="n2"><div class="node-label" data-layout-allow-overflow>CHROME EXT</div><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg></div>
+                <div class="node" id="n3"><div class="node-label" data-layout-allow-overflow>LOCAL DOCKER</div><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 7.6L12 2.1 2 7.6v8.8l10 5.5 10-5.5V7.6z"/><path d="M12 22.1V12"/><path d="M2 7.6l10 5.4 10-5.4"/></svg></div>
+                <div class="node" id="n4"><div class="node-label" data-layout-allow-overflow>GEMINI AI</div><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+            </div>
+        </div>
+
+        <!-- Scene 4: Dashboard -->
+        <div id="scene4" class="scene" data-layout-allow-overflow>
+            <div class="popup-card">
+                <div class="popup-header">
+                    <div style="font-weight: 900; font-size: 24px;">PIPELINE</div>
+                    <div style="color: var(--success); font-weight: 700;">$0.42 SAVED</div>
+                </div>
+                <div class="popup-item" style="border-color: var(--accent);">DeFi Lending Explained</div>
+                <div class="popup-item">LLM System Design</div>
+                <div class="popup-item">HyperFrames Tutorial</div>
+                <div class="popup-btn">APPROVE FOR PROCESSING</div>
+            </div>
+            <div class="subtitle" style="margin-top: 40px;">Control Everything from Your Browser</div>
+        </div>
+
+        <!-- Scene 5: Outro -->
+        <div id="scene5" class="scene" data-layout-allow-overflow>
+            <div class="logo-container">
+                <div class="logo-mark">YT</div>
+                <h1 style="font-size: 80px;">YT LLM Pipeline Assistant</h1>
+                <div class="subtitle" id="final-subtitle">Own Your Knowledge.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.__timelines = window.__timelines || {};
+        const tl = gsap.timeline({ paused: true });
+
+        // Global Elements
+        tl.to("#main-glow", { scale: 1.1, duration: 4, yoyo: true, repeat: 7, ease: "sine.inOut" }, 0);
+        
+        // Scene References
+        const s1 = "#scene1", s2 = "#scene2", s3 = "#scene3", s4 = "#scene4", s5 = "#scene5";
+
+        // Scene 1: Extraction
+        tl.set(s1, { opacity: 1, visibility: "visible" }, 0);
+        tl.from("#s1-title", { scale: 2, opacity: 0, duration: 0.8, ease: "expo.out" }, 0.2);
+        tl.from(s1 + " .subtitle", { y: 30, opacity: 0, duration: 0.6, ease: "power2.out" }, 0.6);
+        tl.from("#w1", { scale: 0, opacity: 0, duration: 1.5, ease: "power1.out" }, 0.4);
+        tl.from("#w2", { scale: 0, opacity: 0, duration: 1.5, ease: "power1.out" }, 0.6);
+        tl.from(s1 + " .snippet", { opacity: 0, y: 20, stagger: 0.2, duration: 0.5 }, 1);
+
+        // Ambient (Finite repeats for 30s)
+        tl.to("#w1", { rotation: 360, duration: 20, repeat: 1, ease: "none" }, 0);
+        tl.to("#w2", { rotation: -360, duration: 25, repeat: 1, ease: "none" }, 0);
+
+
+        // TRANSITION S1 -> S2 (T=5)
+        tl.to(s1, { y: -1080, duration: 0.5, ease: "power3.inOut" }, 5);
+        tl.set(s1, { visibility: "hidden" }, 5.5);
+        tl.fromTo(s2, { y: 1080, opacity: 1, visibility: "visible" }, { y: 0, duration: 0.5, ease: "power3.inOut" }, 5);
+
+        // --- SCENE 2 (5-10s) ---
+        tl.from("#s2-title", { x: -50, opacity: 0, duration: 0.6, ease: "power3.out" }, 5.4);
+        tl.from(".grid-box", { scale: 0.8, opacity: 0, stagger: 0.05, duration: 0.4, ease: "back.out(1.7)" }, 5.6);
+        tl.from(".ip-block", { scale: 0, opacity: 0, stagger: 0.1, duration: 0.3, ease: "elastic.out(1, 0.3)" }, 6.5);
+
+        // TRANSITION S2 -> S3 (T=10)
+        tl.to(s2, { y: -1080, duration: 0.5, ease: "power3.inOut" }, 10);
+        tl.set(s2, { visibility: "hidden" }, 10.5);
+        tl.fromTo(s3, { y: 1080, opacity: 1, visibility: "visible" }, { y: 0, duration: 0.5, ease: "power3.inOut" }, 10);
+
+        // --- SCENE 3 (10-20s) ---
+        tl.from(s3 + " h1", { y: -30, opacity: 0, duration: 0.6, ease: "power2.out" }, 10.4);
+        tl.from(s3 + " .subtitle", { opacity: 0, duration: 1 }, 10.8);
+        tl.from(".node", { scale: 0, opacity: 0, stagger: 0.2, duration: 0.5, ease: "back.out(1.7)" }, 11);
+        tl.from(".connector", { scaleX: 0, stagger: 0.2, duration: 0.4, ease: "power2.inOut" }, 11.3);
+        tl.to("#n2", { boxShadow: "0 0 40px rgba(94, 106, 210, 0.6)", duration: 0.8, yoyo: true, repeat: 5 }, 12);
+
+        // TRANSITION S3 -> S4 (T=20) - Zoom Through
+        tl.to(s3, { scale: 2.5, opacity: 0, filter: "blur(8px)", duration: 0.6, ease: "power3.in" }, 20);
+        tl.set(s3, { visibility: "hidden" }, 20.6);
+        tl.fromTo(s4,
+            { scale: 0.5, opacity: 0, visibility: "visible", filter: "blur(8px)" },
+            { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.6, ease: "power3.out" }, 20.15);
+
+        // --- SCENE 4 (20-25s) ---
+        tl.from(".popup-card", { y: 100, opacity: 0, duration: 0.8, ease: "expo.out" }, 20.8);
+        tl.from(".popup-item", { x: -20, opacity: 0, stagger: 0.1, duration: 0.4 }, 21.2);
+        tl.from(".popup-btn", { scale: 0.9, opacity: 0, duration: 0.4, ease: "back.out" }, 22);
+        tl.to(".popup-btn", { backgroundColor: "#4ade80", duration: 0.3, yoyo: true, repeat: 1 }, 23);
+
+        // TRANSITION S4 -> S5 (T=25) - Blur Crossfade
+        tl.to(s4, { filter: "blur(15px)", scale: 1.05, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 25);
+        tl.set(s4, { visibility: "hidden" }, 25.6);
+        tl.fromTo(s5,
+            { filter: "blur(15px)", scale: 0.95, opacity: 0, visibility: "visible" },
+            { filter: "blur(0px)", scale: 1, opacity: 1, duration: 0.6, ease: "power2.inOut" }, 25.1);
+
+        // --- SCENE 5 (25-30s) ---
+        tl.from(".logo-mark", { rotation: -90, scale: 0, opacity: 0, duration: 0.8, ease: "back.out" }, 25.8);
+        tl.from(s5 + " h1", { y: 20, opacity: 0, duration: 0.6 }, 26.2);
+        tl.from("#final-subtitle", { letterSpacing: "0em", opacity: 0, duration: 1.5, ease: "power2.out" }, 26.8);
+
+        // Final Outro (29.5s)
+        tl.to("#intro-comp", { opacity: 0, duration: 0.5 }, 29.5);
+
+        window.__timelines["intro"] = tl;
+    </script>
+</body>
+</html>

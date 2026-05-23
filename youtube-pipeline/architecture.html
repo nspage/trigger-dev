@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube LLM Pipeline - Architecture & Flows</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #0B0E14;
+            color: #8A8F98;
+            font-family: 'Inter', -apple-system, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            padding: 20px 32px;
+            border-bottom: 1px solid #1C1F27;
+            background: #0B0E14;
+            z-index: 100;
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #F7F8F8;
+            margin: 0 0 6px 0;
+            font-weight: 600;
+        }
+        .header p {
+            font-size: 14px;
+            margin: 0;
+            color: #62666D;
+        }
+        .layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .board {
+            flex: 1;
+            overflow: auto;
+            background: #0B0E14;
+        }
+        .board-content {
+            position: relative;
+            display: flex;
+            gap: 24px;
+            padding: 40px;
+            min-height: 100%;
+            min-width: max-content;
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 220px;
+            z-index: 2;
+        }
+        .col-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #62666D;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .node {
+            background: #111319;
+            border: 1px solid #23252A;
+            border-radius: 6px;
+            padding: 16px;
+            color: #62666D;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .node.active {
+            border-color: #FFD13B;
+            color: #F7F8F8;
+            background: rgba(255, 209, 59, 0.05);
+            box-shadow: 0 0 15px rgba(255, 209, 59, 0.1);
+        }
+        .node.env-dev {
+            border-color: #5E6AD2;
+        }
+        .node.env-dev.active {
+            border-color: #FFD13B;
+        }
+        .node-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #D0D6E0;
+        }
+        .node.active .node-title {
+            color: #FFD13B;
+        }
+        .node-desc {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .badge {
+            position: absolute;
+            top: -8px;
+            right: 8px;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .badge-cloud { background: #1C1F27; color: #8A8F98; border: 1px solid #23252A; }
+        .badge-dev { background: #5E6AD2; color: #FFF; }
+
+        .sidebar {
+            width: 400px;
+            border-left: 1px solid #1C1F27;
+            display: flex;
+            flex-direction: column;
+            background: #0D1017;
+            z-index: 5;
+        }
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .sidebar-section.flows {
+            flex: 1.2;
+            border-bottom: 1px solid #1C1F27;
+        }
+        .sidebar-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #62666D;
+            padding: 16px 24px;
+            background: #0D1017;
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid #1C1F27;
+            font-weight: 600;
+            z-index: 10;
+        }
+        .flow-item {
+            padding: 16px 24px;
+            border-bottom: 1px solid #13151A;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .flow-item:hover {
+            background: #111319;
+        }
+        .flow-item.active {
+            border-left: 3px solid #FFD13B;
+            background: rgba(255, 209, 59, 0.05);
+        }
+        .flow-title {
+            color: #F7F8F8;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .flow-item.active .flow-title {
+            color: #FFD13B;
+        }
+        .flow-desc {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .step-item {
+            padding: 16px 24px;
+            display: flex;
+            gap: 16px;
+            border-bottom: 1px solid #13151A;
+        }
+        .step-number {
+            background: #FFD13B;
+            color: #0B0E14;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .step-content {
+            font-size: 13px;
+        }
+        .step-path {
+            color: #F7F8F8;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .step-desc {
+            color: #8A8F98;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>YouTube LLM Pipeline — Architecture & Flows</h1>
+        <p>Distinguishing between <b>Trigger.dev Cloud</b> (Global Orchestration) and <b>Local Dev Instance</b> (Residential IP Bypass).</p>
+    </div>
+    
+    <div class="layout">
+        <div class="board">
+            <div class="board-content">
+                <svg id="lines-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></svg>
+                
+                <!-- Column 1: ACTORS -->
+                <div class="column">
+                  <div class="col-title">Actors</div>
+                  <div class="node" id="node-youtube">
+                     <div class="node-title">YouTube Creator</div>
+                     <div class="node-desc">Uploads new video</div>
+                  </div>
+                  <div class="node" id="node-admin">
+                     <div class="node-title">Admin (End User)</div>
+                     <div class="node-desc">Approves & reads analyses</div>
+                  </div>
+                </div>
+
+                <!-- Column 2: CLIENT SURFACES -->
+                <div class="column">
+                  <div class="col-title">Client Surfaces</div>
+                  <div class="node" id="node-chrome-ext">
+                     <div class="node-title">Chrome Extension</div>
+                     <div class="node-desc">Dashboard UI</div>
+                  </div>
+                  <div class="node" id="node-telegram-app">
+                     <div class="node-title">Telegram App</div>
+                     <div class="node-desc">Delivery Inbox</div>
+                  </div>
+                  <div class="node" id="node-email-client">
+                     <div class="node-title">Email Client</div>
+                     <div class="node-desc">Inbox viewer</div>
+                  </div>
+                </div>
+
+                <!-- Column 3: TRIGGERS & GATEWAYS -->
+                <div class="column">
+                  <div class="col-title">Webhooks & Triggers</div>
+                  <div class="node" id="node-pubsubhubbub">
+                     <div class="node-title">PubSubHubbub</div>
+                     <div class="node-desc">Atom XML feed push</div>
+                  </div>
+                  <div class="node" id="node-cron">
+                     <div class="node-title">Trigger.dev Cron</div>
+                     <div class="node-desc">Scheduled execution</div>
+                  </div>
+                  <div class="node" id="node-worker">
+                     <div class="node-title">Cloudflare Worker</div>
+                     <div class="node-desc">Webhook entrypoint</div>
+                  </div>
+                  <div class="node" id="node-ext-server">
+                     <div class="node-title">Local Ext Server</div>
+                     <div class="node-desc">Bridge API (Docker)</div>
+                  </div>
+                </div>
+
+                <!-- Column 4: TRIGGER.DEV CLOUD -->
+                <div class="column">
+                  <div class="col-title">Trigger.dev Cloud</div>
+                  <div class="node" id="node-task-ingest">
+                     <span class="badge badge-cloud">Cloud</span>
+                     <div class="node-title">yt-ingest-video</div>
+                     <div class="node-desc">Adds to pending list</div>
+                  </div>
+                  <div class="node" id="node-task-daily">
+                     <span class="badge badge-cloud">Cloud</span>
+                     <div class="node-title">yt-daily-email-digest</div>
+                     <div class="node-desc">Daily HTML report</div>
+                  </div>
+                  <div class="node" id="node-task-subscribe">
+                     <span class="badge badge-cloud">Cloud</span>
+                     <div class="node-title">yt-subscribe-pubsub</div>
+                     <div class="node-desc">Renews hub subscriptions</div>
+                  </div>
+                </div>
+
+                <!-- Column 5: LOCAL DEV INSTANCE -->
+                <div class="column">
+                  <div class="col-title">Local Dev Instance</div>
+                  <div class="node env-dev" id="node-task-process">
+                     <span class="badge badge-dev">Local IP</span>
+                     <div class="node-title">yt-process-videos</div>
+                     <div class="node-desc"><b>Residential IP:</b> Bypasses YouTube Cloud IP blocks</div>
+                  </div>
+                </div>
+
+                <!-- Column 6: STORAGE / DATA -->
+                <div class="column">
+                  <div class="col-title">Storage (Cloudflare KV)</div>
+                  <div class="node" id="node-kv-pending">
+                     <div class="node-title">Pending Videos</div>
+                     <div class="node-desc">Awaiting user approval</div>
+                  </div>
+                  <div class="node" id="node-kv-processed">
+                     <div class="node-title">Processed Videos</div>
+                     <div class="node-desc">Final markdown + cost</div>
+                  </div>
+                  <div class="node" id="node-kv-channels">
+                     <div class="node-title">Tracked Channels</div>
+                     <div class="node-desc">Monitored YouTube IDs</div>
+                  </div>
+                </div>
+
+                <!-- Column 7: EXTERNAL SERVICES -->
+                <div class="column">
+                  <div class="col-title">External Services</div>
+                  <div class="node" id="node-ext-youtube">
+                     <div class="node-title">YouTube API</div>
+                     <div class="node-desc">OEmbed & Transcripts</div>
+                  </div>
+                  <div class="node" id="node-ext-gemini">
+                     <div class="node-title">Gemini API</div>
+                     <div class="node-desc">Flash Lite / Flash / Pro</div>
+                  </div>
+                  <div class="node" id="node-ext-telegram">
+                     <div class="node-title">Telegram Bot API</div>
+                     <div class="node-desc">Messaging & Callbacks</div>
+                  </div>
+                  <div class="node" id="node-ext-email">
+                     <div class="node-title">Email Provider</div>
+                     <div class="node-desc">SMTP delivery</div>
+                  </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="sidebar-section flows">
+                <div class="sidebar-title">Flows</div>
+                <div id="flows-list"></div>
+            </div>
+            <div class="sidebar-section steps">
+                <div class="sidebar-title">Steps</div>
+                <div id="steps-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const flowsData = [
+          {
+            id: 'ingestion',
+            title: 'Automated Video Ingestion',
+            desc: 'New video triggers webhook to save in pending queue.',
+            path: ['node-youtube', 'node-pubsubhubbub', 'node-worker', 'node-task-ingest', 'node-kv-pending'],
+            steps: [
+              {
+                path: 'YouTube Creator → PubSubHubbub',
+                desc: 'Creator publishes a new video, triggering an Atom XML feed push.'
+              },
+              {
+                path: 'PubSubHubbub → Cloudflare Worker',
+                desc: 'Worker receives the webhook, verifies the feed, and extracts video ID.'
+              },
+              {
+                path: 'Cloudflare Worker → yt-ingest-video (Cloud)',
+                desc: 'Worker triggers the Trigger.dev task via API.'
+              },
+              {
+                path: 'yt-ingest-video (Cloud) → KV: Pending Videos',
+                desc: 'Task resolves the category and adds the video to the Cloudflare KV pending list.'
+              }
+            ]
+          },
+          {
+            id: 'approval',
+            title: 'Approval & Queue Management',
+            desc: 'Admin manages pending videos via the Chrome Extension.',
+            path: ['node-admin', 'node-chrome-ext', 'node-ext-server', 'node-task-process'],
+            steps: [
+              {
+                path: 'Admin → Chrome Extension',
+                desc: 'Admin opens the popup and reviews the queue fetched from KV.'
+              },
+              {
+                path: 'Chrome Extension → Local Ext Server',
+                desc: 'Admin clicks Process. Extension sends local API request to docker container.'
+              },
+              {
+                path: 'Local Ext Server → yt-process-videos',
+                desc: 'Server natively triggers the Trigger.dev processing task.'
+              }
+            ]
+          },
+          {
+            id: 'analysis',
+            title: 'Video Analysis Core (Local-First)',
+            desc: 'Transcript extraction via Local IP, LLM synthesis, and delivery.',
+            path: ['node-task-process', 'node-ext-youtube', 'node-ext-gemini', 'node-kv-processed', 'node-ext-telegram', 'node-telegram-app', 'node-admin'],
+            steps: [
+              {
+                path: 'yt-process-videos (Local Dev) → YouTube API',
+                desc: 'Local Dev instance fetches the transcript using residential IP to avoid Cloud blocking.'
+              },
+              {
+                path: 'yt-process-videos (Local Dev) → Gemini API',
+                desc: 'Transcript sent to Gemini with category-specific prompts and selected model (Lite/Flash/Pro).'
+              },
+              {
+                path: 'Gemini API → KV: Processed Videos',
+                desc: 'Structured Markdown result and token usage costs are saved to KV.'
+              },
+              {
+                path: 'KV: Processed Videos → Telegram Bot API',
+                desc: 'Final Markdown document is pushed via Telegram API.'
+              },
+              {
+                path: 'Telegram Bot API → Telegram App',
+                desc: 'Telegram client fetches the document.'
+              },
+              {
+                path: 'Telegram App → Admin',
+                desc: 'Admin receives the rendered Markdown document in Telegram.'
+              }
+            ]
+          },
+          {
+            id: 'config',
+            title: 'Category & Prompt Config',
+            desc: 'Manage analysis behavior and model selection.',
+            path: ['node-admin', 'node-chrome-ext', 'node-ext-server', 'node-kv-pending', 'node-kv-processed'],
+            steps: [
+              {
+                path: 'Admin → Categories Tab',
+                desc: 'User configures custom prompts and assigns specific Gemini models to categories.'
+              },
+              {
+                path: 'Chrome Extension → Local Ext Server',
+                desc: 'Configuration updates are sent to the local bridge.'
+              },
+              {
+                path: 'Local Ext Server → KV: Categories',
+                desc: 'Prompts and model preferences are persisted to Cloudflare KV.'
+              }
+            ]
+          },
+          {
+            id: 'daily',
+            title: 'Daily Email Digest',
+            desc: 'Aggregates the day\'s analyses into an HTML email.',
+            path: ['node-cron', 'node-task-daily', 'node-kv-processed', 'node-ext-email', 'node-email-client', 'node-admin'],
+            steps: [
+              {
+                path: 'Trigger.dev Cron → yt-daily-email-digest (Cloud)',
+                desc: 'Cron fires at 21:00 Paris time.'
+              },
+              {
+                path: 'yt-daily-email-digest (Cloud) → KV: Processed Videos',
+                desc: 'Task fetches all analyses generated during the current day.'
+              },
+              {
+                path: 'yt-daily-email-digest (Cloud) → Email Provider',
+                desc: 'HTML digest is compiled and delivered via SMTP provider.'
+              },
+              {
+                path: 'Email Provider → Email Client',
+                desc: 'Provider delivers to inbox.'
+              },
+              {
+                path: 'Email Client → Admin',
+                desc: 'Email arrives and is read by the user.'
+              }
+            ]
+          }
+        ];
+
+        let currentFlow = null;
+
+        function selectFlow(id) {
+            currentFlow = id;
+            document.querySelectorAll('.flow-item').forEach(el => {
+                if (el.dataset.id === id) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+            const flow = flowsData.find(f => f.id === id);
+            const stepsContainer = document.getElementById('steps-container');
+            if (!flow) return;
+            let html = '';
+            flow.steps.forEach((step, i) => {
+                html += '<div class="step-item">' +
+                    '<div class="step-number">' + (i + 1) + '</div>' +
+                    '<div class="step-content">' +
+                        '<div class="step-path">' + step.path + '</div>' +
+                        '<div class="step-desc">' + step.desc + '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+            stepsContainer.innerHTML = html;
+            setTimeout(() => drawLines(id), 50); 
+        }
+
+        function drawLines(activeFlowId) {
+            const svg = document.getElementById('lines-svg');
+            svg.innerHTML = '<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#FFD13B" /></marker></defs>';
+            if (!activeFlowId) return;
+            const flow = flowsData.find(f => f.id === activeFlowId);
+            if (!flow) return;
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+            flow.path.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('active');
+            });
+            const boardContent = document.querySelector('.board-content');
+            const boardRect = boardContent.getBoundingClientRect();
+            for (let i = 0; i < flow.path.length - 1; i++) {
+                const startNode = document.getElementById(flow.path[i]);
+                const endNode = document.getElementById(flow.path[i+1]);
+                if (startNode && endNode) {
+                    const startRect = startNode.getBoundingClientRect();
+                    const endRect = endNode.getBoundingClientRect();
+                    const sTop = startRect.top - boardRect.top;
+                    const sLeft = startRect.left - boardRect.left;
+                    const eTop = endRect.top - boardRect.top;
+                    const eLeft = endRect.left - boardRect.left;
+                    let startX, startY, endX, endY, cp1X, cp1Y, cp2X, cp2Y;
+                    if (sLeft < eLeft) {
+                        startX = sLeft + startRect.width;
+                        startY = sTop + startRect.height / 2;
+                        endX = eLeft - 4;
+                        endY = eTop + endRect.height / 2;
+                        cp1X = startX + (endX - startX) / 2;
+                        cp1Y = startY;
+                        cp2X = startX + (endX - startX) / 2;
+                        cp2Y = endY;
+                    } else {
+                        startX = sLeft;
+                        startY = sTop + startRect.height / 2;
+                        endX = eLeft + endRect.width + 4;
+                        endY = eTop + endRect.height / 2;
+                        cp1X = startX - 80;
+                        cp1Y = startY + 80;
+                        cp2X = endX + 80;
+                        cp2Y = endY + 80;
+                    }
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    path.setAttribute("d", "M " + startX + " " + startY + " C " + cp1X + " " + cp1Y + ", " + cp2X + " " + cp2Y + ", " + endX + " " + endY);
+                    path.setAttribute("stroke", "#FFD13B");
+                    path.setAttribute("stroke-width", "2");
+                    path.setAttribute("fill", "none");
+                    path.setAttribute("marker-end", "url(#arrowhead)");
+                    svg.appendChild(path);
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", startX);
+                    circle.setAttribute("cy", startY);
+                    circle.setAttribute("r", "10");
+                    circle.setAttribute("fill", "#FFD13B");
+                    svg.appendChild(circle);
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", startX);
+                    text.setAttribute("y", startY + 4);
+                    text.setAttribute("fill", "#0B0E14");
+                    text.setAttribute("font-size", "11");
+                    text.setAttribute("font-weight", "bold");
+                    text.setAttribute("text-anchor", "middle");
+                    text.textContent = (i + 1).toString();
+                    svg.appendChild(text);
+                }
+            }
+        }
+
+        window.onload = () => {
+            const flowsList = document.getElementById('flows-list');
+            let html = '';
+            flowsData.forEach(flow => {
+                html += '<div class="flow-item" data-id="' + flow.id + '" onclick="selectFlow(\'' + flow.id + '\')">' +
+                        '<div class="flow-title">' + flow.title + '</div>' +
+                        '<div class="flow-desc">' + flow.desc + '</div>' +
+                        '</div>';
+            });
+            flowsList.innerHTML = html;
+            selectFlow(flowsData[0].id);
+            window.addEventListener('resize', () => drawLines(currentFlow));
+            document.fonts.ready.then(() => drawLines(currentFlow));
+        };
+    </script>
+</body>
+</html>

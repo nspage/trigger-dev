@@ -1,0 +1,212 @@
+{
+  "project": "YouTube LLM Pipeline",
+  "title": "Architecture & Flows",
+  "environments": {
+    "cloud": {
+      "name": "Trigger.dev Cloud (Production)",
+      "description": "Global orchestration, webhooks, and scheduling.",
+      "tasks": [
+        "telegram-webhook",
+        "yt-ingest-video",
+        "yt-digest-sender",
+        "yt-daily-email-digest",
+        "yt-subscribe-pubsub"
+      ]
+    },
+    "dev": {
+      "name": "Local Dev Instance (Residential IP)",
+      "description": "Bypasses YouTube Cloud IP blocks for transcript fetching.",
+      "tasks": [
+        "yt-process-videos"
+      ]
+    }
+  },
+  "architecture": {
+    "actors": [
+      "YouTube Creator",
+      "Admin (End User)"
+    ],
+    "clientSurfaces": [
+      "Telegram App",
+      "Email Client"
+    ],
+    "webhooksAndTriggers": [
+      "PubSubHubbub",
+      "Trigger.dev Cron",
+      "Cloudflare Worker"
+    ],
+    "triggerCloud": [
+      "telegram-webhook",
+      "yt-ingest-video",
+      "yt-digest-sender",
+      "yt-daily-email-digest",
+      "yt-subscribe-pubsub"
+    ],
+    "localDev": [
+      "yt-process-videos (Transcript Processor)"
+    ],
+    "storage": [
+      "KV: Pending Videos",
+      "KV: Processed Videos",
+      "KV: Tracked Channels",
+      "KV: Categories (Prompts & Models)"
+    ],
+    "externalServices": [
+      "YouTube API (Transcript Fetch)",
+      "Gemini API (Lite/Flash/Pro)",
+      "Telegram Bot API",
+      "Email Provider"
+    ]
+  },
+  "flows": [
+    {
+      "id": "ingestion",
+      "title": "Automated Video Ingestion",
+      "description": "New video triggers webhook to save in pending queue.",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "source": "YouTube Creator",
+          "target": "PubSubHubbub",
+          "details": "Creator publishes a new video, triggering an Atom XML feed push."
+        },
+        {
+          "stepNumber": 2,
+          "source": "PubSubHubbub",
+          "target": "Cloudflare Worker",
+          "details": "Worker receives the webhook, verifies the feed, and extracts video ID."
+        },
+        {
+          "stepNumber": 3,
+          "source": "Cloudflare Worker",
+          "target": "yt-ingest-video (Cloud)",
+          "details": "Worker triggers the Trigger.dev task via API."
+        },
+        {
+          "stepNumber": 4,
+          "source": "yt-ingest-video (Cloud)",
+          "target": "KV: Pending Videos",
+          "details": "Task resolves the category and adds the video to the Cloudflare KV pending list."
+        }
+      ]
+    },
+    {
+      "id": "approval",
+      "title": "Approval & Queue Management",
+      "description": "Admin manages pending videos via the Chrome Extension.",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "source": "Admin",
+          "target": "Chrome Extension",
+          "details": "Admin opens the popup and reviews the queue fetched from KV."
+        },
+        {
+          "stepNumber": 2,
+          "source": "Chrome Extension",
+          "target": "Local Ext Server",
+          "details": "Admin clicks Process. Extension sends local API request to docker container."
+        },
+        {
+          "stepNumber": 3,
+          "source": "Local Ext Server",
+          "target": "yt-process-videos (Local Dev)",
+          "details": "Server natively triggers the Trigger.dev processing task."
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "title": "Video Analysis Core (Local-First)",
+      "description": "Transcript extraction via Local IP, LLM synthesis, and delivery.",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "source": "yt-process-videos (Local Dev)",
+          "target": "YouTube API",
+          "details": "Local Dev instance fetches the transcript using residential IP to avoid Cloud blocking."
+        },
+        {
+          "stepNumber": 2,
+          "source": "yt-process-videos (Local Dev)",
+          "target": "Gemini API",
+          "details": "Transcript sent to Gemini with category-specific prompts and selected model (Lite/Flash/Pro)."
+        },
+        {
+          "stepNumber": 3,
+          "source": "Gemini API",
+          "target": "KV: Processed Videos",
+          "details": "Structured Markdown result and token usage costs are saved to KV."
+        },
+        {
+          "stepNumber": 4,
+          "source": "KV: Processed Videos",
+          "target": "Telegram Bot API",
+          "details": "Final Markdown document is pushed via Telegram API."
+        },
+        {
+          "stepNumber": 5,
+          "source": "Telegram Bot API",
+          "target": "Admin",
+          "details": "Admin receives the rendered Markdown document in Telegram."
+        }
+      ]
+    },
+    {
+      "id": "config",
+      "title": "Category & Prompt Config",
+      "description": "Manage analysis behavior and model selection.",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "source": "Admin",
+          "target": "Chrome Extension",
+          "details": "User configures custom prompts and assigns specific Gemini models to categories in the Categories tab."
+        },
+        {
+          "stepNumber": 2,
+          "source": "Chrome Extension",
+          "target": "Local Ext Server",
+          "details": "Configuration updates are sent to the local bridge."
+        },
+        {
+          "stepNumber": 3,
+          "source": "Local Ext Server",
+          "target": "KV: Categories",
+          "details": "Prompts and model preferences are persisted to Cloudflare KV."
+        }
+      ]
+    },
+    {
+      "id": "daily",
+      "title": "Daily Email Digest",
+      "description": "Aggregates the day's analyses into an HTML email.",
+      "steps": [
+        {
+          "stepNumber": 1,
+          "source": "Trigger.dev Cron",
+          "target": "yt-daily-email-digest (Cloud)",
+          "details": "Cron fires at 21:00 Paris time."
+        },
+        {
+          "stepNumber": 2,
+          "source": "yt-daily-email-digest (Cloud)",
+          "target": "KV: Processed Videos",
+          "details": "Task fetches all analyses generated during the current day."
+        },
+        {
+          "stepNumber": 3,
+          "source": "yt-daily-email-digest (Cloud)",
+          "target": "Email Provider",
+          "details": "HTML digest is compiled and delivered via SMTP provider."
+        },
+        {
+          "stepNumber": 4,
+          "source": "Email Provider",
+          "target": "Admin",
+          "details": "Email arrives in the user inbox."
+        }
+      ]
+    }
+  ]
+}
