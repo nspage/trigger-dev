@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local YouTube Knowledge Pipeline — AI & GTM Engineering Case Study</title>
+  <meta name="description" content="A hybrid, local-first content intelligence engine designed to scrape, categorize, and synthesize YouTube transcripts without getting IP-banned. Built with Cloudflare Workers, Hono, Trigger.dev, and Google Gemini.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Shared SVG Icons -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="icon-pipeline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+    </symbol>
+    <symbol id="icon-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+    </symbol>
+    <symbol id="icon-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+      <rect x="9" y="9" width="6" height="6"></rect>
+      <line x1="9" y1="1" x2="9" y2="4"></line>
+      <line x1="15" y1="1" x2="15" y2="4"></line>
+      <line x1="9" y1="20" x2="9" y2="23"></line>
+      <line x1="15" y1="20" x2="15" y2="23"></line>
+      <line x1="20" y1="9" x2="23" y2="9"></line>
+      <line x1="20" y1="15" x2="23" y2="15"></line>
+      <line x1="1" y1="9" x2="4" y2="9"></line>
+      <line x1="1" y1="15" x2="4" y2="15"></line>
+    </symbol>
+    <symbol id="icon-network" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="16" y="16" width="6" height="6" rx="1"></rect>
+      <rect x="2" y="16" width="6" height="6" rx="1"></rect>
+      <rect x="9" y="2" width="6" height="6" rx="1"></rect>
+      <path d="M12 8v8M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path>
+    </symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    </symbol>
+    <symbol id="icon-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2z"></path>
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2z"></path>
+    </symbol>
+    <symbol id="icon-chrome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <circle cx="12" cy="12" r="4"></circle>
+      <line x1="21.17" y1="8" x2="12" y2="8"></line>
+      <line x1="3.95" y1="6.06" x2="8.54" y2="14"></line>
+      <line x1="10.88" y1="21.94" x2="15.46" y2="14"></line>
+    </symbol>
+    <symbol id="icon-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </symbol>
+    <symbol id="icon-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"></line>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+    </symbol>
+  </svg>
+
+  <!-- Navigation -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="logo-group">
+        <svg class="logo-icon"><use href="#icon-pipeline"></use></svg>
+        <span class="logo-text">YouTube Pipeline</span>
+      </a>
+      <div class="nav-links">
+        <a href="#case-study" class="nav-link">Case Study</a>
+        <a href="#simulator" class="nav-link">Interactive Demo</a>
+        <a href="#features" class="nav-link">Features</a>
+        <span class="nav-badge">
+          <span class="nav-badge-dot"></span>
+          Local Node: Active
+        </span>
+        <a href="https://github.com" target="_blank" class="btn-cta" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <svg width="16" height="16" fill="currentColor"><use href="#icon-github"></use></svg>
+          GitHub Repo
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <span class="hero-tag">AI & GTM Engineering Showcase</span>
+        <h1 class="hero-title">Local YouTube Knowledge Pipeline</h1>
+        <p class="hero-subtitle">
+          How I built a hybrid, local-first transcript scraping & synthesis tool to bypass YouTube's cloud IP blocking, automate structured market intelligence, and feed my personal wiki.
+        </p>
+        <div class="hero-actions">
+          <a href="#simulator" class="btn-primary-large">Try Interactive Simulator</a>
+          <a href="#case-study" class="btn-secondary">Read Case Study</a>
+        </div>
+      </div>
+      
+      <!-- Video Container Mockup -->
+      <div class="video-mockup" id="videoContainer">
+        <video id="promoVideo" class="video-element" preload="metadata">
+          <source src="final-promo.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="video-overlay" id="videoOverlay">
+          <div class="play-button">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+          <span class="video-overlay-text">Watch Project Explainer Video</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Strategic Showcase Case Study -->
+  <section class="case-study" id="case-study">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Engineering Case Study</span>
+        <h2 class="section-title">The Product Builder's Perspective</h2>
+        <p class="section-desc">
+          Building a growth-marketing tool is more than putting APIs together. It requires understanding low-level constraints, network challenges, and architecting systems that run reliably.
+        </p>
+      </div>
+
+      <div class="case-study-grid">
+        <div class="case-study-content">
+          <!-- Block 1 -->
+          <div class="case-block">
+            <div class="case-icon-wrapper">
+              <svg><use href="#icon-shield"></use></svg>
+            </div>
+            <div>
+              <h3 class="case-block-title">The Challenge: Bypassing YouTube's Aggressive IP Blocks</h3>
+              <p class="case-block-text">
+                YouTube aggressively blocks cloud hosting providers (AWS, GCP, DigitalOcean, Cloudflare) when retrieving transcripts, leading to instant HTTP 403 errors or captcha challenges. Cloud-native scrapers fail quickly. To solve this, I designed a hybrid execution model: ingestion sits in the cloud, but transcript scraping executes on my local residential IP, bypassing blocks natively.
+              </p>
+            </div>
+          </div>
+
+          <!-- Block 2 -->
+          <div class="case-block">
+            <div class="case-icon-wrapper">
+              <svg><use href="#icon-cpu"></use></svg>
+            </div>
+            <div>
+              <h3 class="case-block-title">The Architecture: Hybrid Cloud & Local Docker Sync</h3>
+              <p class="case-block-text">
+                A public Cloudflare Worker receives YouTube PubSubHubbub webhooks whenever a tracked channel publishes. It logs metadata in Cloudflare KV. A lightweight local node (running in Docker on a residential IP) uses **Trigger.dev v3** to subscribe to the task queue, pull down the transcript locally, call Google Gemini, and push the synthesis downstream.
+              </p>
+            </div>
+          </div>
+
+          <!-- Block 3 -->
+          <div class="case-block">
+            <div class="case-icon-wrapper">
+              <svg><use href="#icon-brain"></use></svg>
+            </div>
+            <div>
+              <h3 class="case-block-title">GTM Automation: Category-Specific Prompt Synthesis</h3>
+              <p class="case-block-text">
+                Not all content is equal. A technical tutorial needs step-by-step SOP extraction, whereas a business strategy video requires macroeconomic frameworks. I built a dynamic classification system in Hono that automatically categorizes incoming channels (Tactical, Ideation, Strategy, PKM) and feeds the transcript to Gemini with custom-tailored prompt templates.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Biography / Recruiter Widget -->
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="profile-avatar">NB</div>
+            <div>
+              <h4 class="profile-name">Nico</h4>
+              <span class="profile-title">AI & GTM Engineer</span>
+            </div>
+          </div>
+          <p class="profile-bio">
+            I specialize in designing and engineering autonomous systems, growth tooling, and developer integrations. I build custom pipelines that solve real-world problems.
+          </p>
+          <div class="spec-list">
+            <div class="spec-item">
+              <span class="spec-label">Core Focus</span>
+              <span class="spec-val">AI/GTM Automation</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Favorite Stack</span>
+              <span class="spec-val">TS / Hono / Workers</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">Orchestration</span>
+              <span class="spec-val">Trigger.dev / Docker</span>
+            </div>
+            <div class="spec-item">
+              <span class="spec-label">AI Integration</span>
+              <span class="spec-val">Google Gemini API</span>
+            </div>
+          </div>
+          <a href="mailto:hiring@example.com" class="btn-contact">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            Let's Collaborate
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Pipeline Simulator -->
+  <section class="case-study" id="simulator" style="background: rgba(14, 15, 17, 0.3); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Interactive Simulation</span>
+        <h2 class="section-title">The Local-First Orchestration Flow</h2>
+        <p class="section-desc">
+          Click through the steps below to trigger a simulated pipeline run. Watch how data routes from YouTube's pub-sub system through Cloudflare, executes in Docker locally, calls Gemini, and delivers findings.
+        </p>
+      </div>
+
+      <div class="simulator-container">
+        <!-- Simulator Steps Controller -->
+        <div class="sim-controller">
+          <div>
+            <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Pipeline Steps</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Follow the data journey from ingestion to delivery.</p>
+            
+            <div class="sim-steps">
+              <button class="sim-step-btn active" data-step="1">
+                <span class="sim-step-num">01</span>
+                <div>
+                  <h4 class="sim-step-title">Ingestion Layer</h4>
+                  <p class="sim-step-desc">CF Worker captures PubSub webhook.</p>
+                </div>
+              </button>
+              
+              <button class="sim-step-btn" data-step="2">
+                <span class="sim-step-num">02</span>
+                <div>
+                  <h4 class="sim-step-title">Review Queue</h4>
+                  <p class="sim-step-desc">Extension prompts human-in-the-loop.</p>
+                </div>
+              </button>
+              
+              <button class="sim-step-btn" data-step="3">
+                <span class="sim-step-num">03</span>
+                <div>
+                  <h4 class="sim-step-title">Local Docker Scraping</h4>
+                  <p class="sim-step-desc">Scrapes transcripts via residential IP.</p>
+                </div>
+              </button>
+              
+              <button class="sim-step-btn" data-step="4">
+                <span class="sim-step-num">04</span>
+                <div>
+                  <h4 class="sim-step-title">Gemini Structuring</h4>
+                  <p class="sim-step-desc">Tailored prompt categorizes & synthesizes.</p>
+                </div>
+              </button>
+              
+              <button class="sim-step-btn" data-step="5">
+                <span class="sim-step-num">05</span>
+                <div>
+                  <h4 class="sim-step-title">Telegram Delivery</h4>
+                  <p class="sim-step-desc">Markdown sent directly to devices.</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div class="sim-nav">
+            <button class="btn-secondary" id="simPrev" style="padding: 0.5rem 1rem; font-size: 0.85rem;" disabled>
+              Previous
+            </button>
+            <button class="btn-cta" id="simNext" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+              Next Step
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Simulator Display Panel -->
+        <div class="sim-output">
+          <div class="sim-screen-header">
+            <div class="sim-screen-title">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+              <span>Pipeline Environment</span>
+            </div>
+            <div class="sim-tab-dots">
+              <span class="sim-dot red"></span>
+              <span class="sim-dot yellow"></span>
+              <span class="sim-dot green"></span>
+            </div>
+          </div>
+
+          <!-- Graphic Demo Display -->
+          <div class="visual-demo-area">
+            <!-- Step 1 Ingestion Graphic -->
+            <div class="demo-state active" data-step="1">
+              <div class="webhook-graphic">
+                <div class="flow-node">YouTube PubSub</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node highlight">CF Worker</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node">Cloudflare KV</div>
+              </div>
+            </div>
+
+            <!-- Step 2 Graphic -->
+            <div class="demo-state" data-step="2">
+              <div class="ext-popup-mock">
+                <div class="ext-header">
+                  <span>YouTube Pipeline</span>
+                  <span style="color:var(--green)">1 Video Pending</span>
+                </div>
+                <div class="ext-card-simulate">
+                  <div>
+                    <div style="font-weight:600; margin-bottom: 2px;">Building AI Agents...</div>
+                    <div style="color:var(--text-muted); font-size:9px;">Channel: DevMastery</div>
+                  </div>
+                  <button class="ext-btn-approve">Approve</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3 Graphic -->
+            <div class="demo-state" data-step="3">
+              <div class="docker-container-visual">
+                <div class="docker-icon-box">
+                  <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><path d="M13.983 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M11.261 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M11.261 8.356h2.119c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185h-2.119c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M8.539 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186H8.539c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M8.539 8.356h2.119c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185H8.539c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M5.817 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.083-.186-.186-.186H5.817c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M2.84 8.356h2.118c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185H2.84c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185m11.143-5.438h2.119c.102 0 .186-.083.186-.185V.614c0-.102-.084-.185-.186-.185h-2.119c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M22.062 10h-2.298c-.5.011-1 .216-1.393.573-.393-.357-.894-.562-1.393-.573H2.046c-.545.012-1.054.29-1.316.732-.26.44-.253.977.02 1.411C2.18 14.43 4.29 17.5 7 17.5c2.43 0 4.39-2.42 5-5 .61 2.58 2.57 5 5 5 2.71 0 4.82-3.07 6.25-5.355.273-.434.28-.971.02-1.411C23.007 10.29 22.5 10.012 22.062 10z"/></svg>
+                </div>
+                <div class="docker-status-text">
+                  <div style="font-weight: 700;">Local Residential Node</div>
+                  <div class="docker-status-badge">Container: Active</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4 Graphic -->
+            <div class="demo-state" data-step="4">
+              <div class="gemini-model-visual">
+                <span class="prompt-pill">Template: Tactical</span>
+                <div class="gemini-stars-box">
+                  <span class="gemini-sparkle">✦</span>
+                </div>
+                <span class="prompt-pill">Model: Gemini 3.5</span>
+              </div>
+            </div>
+
+            <!-- Step 5 Graphic -->
+            <div class="demo-state" data-step="5">
+              <div class="tg-digest-visual">
+                <svg class="telegram-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.24.37-.49 1.02-.75 3.99-1.74 6.66-2.88 8.01-3.43 3.81-1.56 4.6-.18 4.4 1.15z"/></svg>
+                <div class="telegram-bubble">
+                  <strong>Task dQw4w9WgXcQ Completed!</strong><br>
+                  Structured Markdown summary dispatched to chat.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Virtual Console Terminal -->
+          <div class="virtual-terminal" id="terminalConsole">
+            <!-- Filled dynamically by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Product Features Grid -->
+  <section class="case-study" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Feature Set</span>
+        <h2 class="section-title">Fully Integrated Solutions</h2>
+        <p class="section-desc">
+          Building a robust automation requires thinking about all states of the project, from cost control to data integration.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-network"></use></svg>
+          <h3 class="feature-title">Autopilot Ingestion</h3>
+          <p class="feature-desc">
+            A standalone Cloudflare Worker registers to YouTube PubSubHubbub hub endpoints. New video alerts are ingested asynchronously via webhooks, with state locked safely in Cloudflare KV store.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-chrome"></use></svg>
+          <h3 class="feature-title">Chrome Extension UI</h3>
+          <p class="feature-desc">
+            Built using Manifest V3 guidelines. Serves as a local panel dashboard allowing users to filter categories, review the queue, configure prompts, and inspect processing logs instantly.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-brain"></use></svg>
+          <h3 class="feature-title">Category-Specific Prompts</h3>
+          <p class="feature-desc">
+            Classifies videos into distinct categories (Ideation, Strategy, PKM, news, etc.) and routes transcript data through tailored LLM instructions for hyper-relevant action extraction.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-dollar"></use></svg>
+          <h3 class="feature-title">Zero-Cost Infrastructure</h3>
+          <p class="feature-desc">
+            Orchestration runs on local Docker, synthesis uses the Gemini free-tier quota, and ingestion lives on Cloudflare's free tier. Run a fully automated knowledge center for $0/month.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-pipeline"></use></svg>
+          <h3 class="feature-title">Markdown / Obsidian Sync</h3>
+          <p class="feature-desc">
+            All synthesized files are dispatched formatted in clean, clean Markdown. Perfect to drop directly into Obsidian or Logseq to automatically compile an interlinked personal knowledge graph.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-card-glow"></div>
+          <svg class="feature-icon"><use href="#icon-message"></use></svg>
+          <h3 class="feature-title">Telegram & Digest Emails</h3>
+          <p class="feature-desc">
+            Instant updates on the go. Summaries push automatically as rich documents to Telegram, and email daily digests summarize key knowledge topics so you never miss anything.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Specs Banner -->
+  <section class="container">
+    <div class="specs-banner">
+      <h3 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Pipeline Technical Performance</h3>
+      <div class="specs-grid">
+        <div>
+          <div class="spec-stat">~5.2s</div>
+          <div class="spec-stat-desc">Execution Speed</div>
+        </div>
+        <div>
+          <div class="spec-stat">$0.00</div>
+          <div class="spec-stat-desc">Server Cost</div>
+        </div>
+        <div>
+          <div class="spec-stat">100%</div>
+          <div class="spec-stat-desc">IP Blocks Bypassed</div>
+        </div>
+        <div>
+          <div class="spec-stat">10+ hrs</div>
+          <div class="spec-stat-desc">Time Saved / Wk</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-grid">
+      <div class="footer-copy">
+        <svg fill="currentColor" viewBox="0 0 24 24" width="20" height="20"><use href="#icon-pipeline"></use></svg>
+        <span>&copy; Nico — Portfolio Showcase Project. Built with AI.</span>
+      </div>
+      <div class="footer-links">
+        <a href="#case-study" class="footer-link">Case Study</a>
+        <a href="#simulator" class="footer-link">Simulator</a>
+        <a href="https://github.com" class="footer-link" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

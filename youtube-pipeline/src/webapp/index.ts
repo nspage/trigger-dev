@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { tasks, runs } from '@trigger.dev/sdk/v3'
@@ -21,10 +22,6 @@ app.use('/api/extension/*', cors({
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }))
-
-app.get('/', (c) => {
-    return c.text('Antigravity Trigger.dev Webhook & Extension Server is running!')
-})
 
 // === CHROME EXTENSION ENDPOINTS ===
 
@@ -362,6 +359,9 @@ app.post('/api/extension/categorisation-prompt', async (c) => {
         return c.json({ success: false, error: String(e) }, 500)
     }
 })
+
+// Fallback to serve static landing page files
+app.use('/*', serveStatic({ root: './landing-page' }))
 
 const port = 3000
 console.log(`Extension Server is running on http://localhost:${port}`)

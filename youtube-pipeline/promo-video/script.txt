@@ -1,0 +1,6 @@
+Welcome to YouTube Pipeline. Your local knowledge engine that turns videos into actionable insights.
+Track your favorite creators effortlessly, and automatically fetch transcripts the moment new videos drop.
+Organize content your way, using custom prompts per category powered by the Gemini API.
+Knowledge is ready when you are. Get rich markdown summaries sent straight to your devices.
+Build an interconnected knowledge graph, creating a personal wiki of your mind.
+YouTube Pipeline. Run it locally, and truly own your data.
