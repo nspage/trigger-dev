@@ -18,6 +18,9 @@ env
 *.mp4
 *.wav
 *.mp3
+*.ac3
+*.m4a
+*.ogg
 renders/
 **/.thumbnails/
 **/.waveform-cache/
