@@ -370,7 +370,7 @@ app.post('/api/extension/categorisation-prompt', async (c) => {
 app.use('/*', serveStatic({ root: './landing-page' }))
 
 const port = 3000
-const hostname = '127.0.0.1'
+const hostname = process.env.HOST || '127.0.0.1'
 console.log(`Extension Server is running on http://${hostname}:${port}`)
 
 serve({
