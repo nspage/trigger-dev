@@ -13,8 +13,8 @@
   --green: #4ade80;
   --green-glow: rgba(74, 222, 128, 0.15);
   --red: #f87171;
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
   --font-mono: 'Fira Code', monospace;
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

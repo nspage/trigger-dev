@@ -1,485 +1,437 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local YouTube Knowledge Pipeline — AI & GTM Engineering Case Study</title>
-  <meta name="description" content="A hybrid, local-first content intelligence engine designed to scrape, categorize, and synthesize YouTube transcripts without getting IP-banned. Built with Cloudflare Workers, Hono, Trigger.dev, and Google Gemini.">
-  <link rel="stylesheet" href="styles.css">
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>YouTube Pipeline | Local Knowledge Engineering</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#c6c6c6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f9f9f9",
+                        "on-tertiary-fixed-variant": "#474747",
+                        "secondary-container": "#dedce3",
+                        "coral": "#ff7759",
+                        "hairline": "#d9d9dd",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#000000",
+                        "on-secondary-fixed": "#1b1b20",
+                        "on-error-container": "#93000a",
+                        "background": "#f9f9f9",
+                        "on-primary-fixed-variant": "#474747",
+                        "on-primary-container": "#848484",
+                        "canvas-white": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#1b1b1b",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#5f5e64",
+                        "inverse-surface": "#303030",
+                        "tertiary-container": "#1b1b1b",
+                        "surface": "#f9f9f9",
+                        "action-blue": "#1863dc",
+                        "inverse-on-surface": "#f1f1f1",
+                        "soft-stone": "#eeece7",
+                        "primary-fixed": "#e2e2e2",
+                        "outline": "#7e7576",
+                        "on-background": "#1b1b1b",
+                        "on-primary-fixed": "#1b1b1b",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#cfc4c5",
+                        "on-surface-variant": "#4c4546",
+                        "dark-navy": "#071829",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f3f3f3",
+                        "surface-container-highest": "#e2e2e2",
+                        "ink": "#212121",
+                        "border-light": "#e5e7eb",
+                        "soft-coral": "#ffad9b",
+                        "pale-blue-wash": "#f1f5ff",
+                        "surface-dim": "#dadada",
+                        "secondary-fixed-dim": "#c8c5cc",
+                        "surface-variant": "#e2e2e2",
+                        "muted-slate": "#93939f",
+                        "enterprise-green": "#003c33",
+                        "on-surface": "#1b1b1b",
+                        "secondary-fixed": "#e4e1e8",
+                        "on-tertiary-fixed": "#1b1b1b",
+                        "pale-green-wash": "#edfce9",
+                        "slate": "#75758a",
+                        "primary": "#000000",
+                        "inverse-primary": "#c6c6c6",
+                        "surface-container": "#eeeeee",
+                        "surface-container-high": "#e8e8e8",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-secondary-container": "#616066",
+                        "on-secondary-fixed-variant": "#47464c",
+                        "primary-fixed-dim": "#c6c6c6",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#5e5e5e",
+                        "on-tertiary-container": "#848484"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "md": "24px",
+                        "gutter": "24px",
+                        "xs": "8px",
+                        "xxs": "2px",
+                        "xxl": "80px",
+                        "lg": "40px",
+                        "sm": "16px",
+                        "xl": "64px",
+                        "margin-desktop": "64px"
+                    },
+                    "fontFamily": {
+                        "hero-display": ["Space Grotesk"],
+                        "hero-display-mobile": ["Space Grotesk"],
+                        "section-display": ["Inter"],
+                        "mono-label": ["JetBrains Mono"],
+                        "feature-heading": ["Inter"],
+                        "button": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "section-heading": ["Inter"],
+                        "product-display": ["Space Grotesk"],
+                        "micro": ["Inter"],
+                        "body": ["Inter"],
+                        "card-heading": ["Inter"]
+                    },
+                    "fontSize": {
+                        "hero-display": ["96px", {"lineHeight": "96px", "letterSpacing": "-1.92px", "fontWeight": "400"}],
+                        "hero-display-mobile": ["48px", {"lineHeight": "48px", "letterSpacing": "-0.96px", "fontWeight": "400"}],
+                        "section-display": ["60px", {"lineHeight": "60px", "letterSpacing": "-1.2px", "fontWeight": "400"}],
+                        "mono-label": ["14px", {"lineHeight": "19.6px", "letterSpacing": "0.28px", "fontWeight": "400"}],
+                        "feature-heading": ["24px", {"lineHeight": "31.2px", "fontWeight": "400"}],
+                        "button": ["14px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "25.2px", "fontWeight": "400"}],
+                        "section-heading": ["48px", {"lineHeight": "57.6px", "letterSpacing": "-0.48px", "fontWeight": "400"}],
+                        "product-display": ["72px", {"lineHeight": "72px", "letterSpacing": "-1.44px", "fontWeight": "400"}],
+                        "micro": ["12px", {"lineHeight": "16.8px", "fontWeight": "400"}],
+                        "body": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "card-heading": ["32px", {"lineHeight": "38.4px", "letterSpacing": "-0.32px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #ffffff;
+            color: #1b1b1b;
+        }
+        .text-balanced {
+            text-wrap: balance;
+        }
+    </style>
 </head>
-<body>
-
-  <!-- Shared SVG Icons -->
-  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-    <symbol id="icon-pipeline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002 2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-    </symbol>
-    <symbol id="icon-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-    </symbol>
-    <symbol id="icon-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-      <rect x="9" y="9" width="6" height="6"></rect>
-      <line x1="9" y1="1" x2="9" y2="4"></line>
-      <line x1="15" y1="1" x2="15" y2="4"></line>
-      <line x1="9" y1="20" x2="9" y2="23"></line>
-      <line x1="15" y1="20" x2="15" y2="23"></line>
-      <line x1="20" y1="9" x2="23" y2="9"></line>
-      <line x1="20" y1="15" x2="23" y2="15"></line>
-      <line x1="1" y1="9" x2="4" y2="9"></line>
-      <line x1="1" y1="15" x2="4" y2="15"></line>
-    </symbol>
-    <symbol id="icon-network" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="16" y="16" width="6" height="6" rx="1"></rect>
-      <rect x="2" y="16" width="6" height="6" rx="1"></rect>
-      <rect x="9" y="2" width="6" height="6" rx="1"></rect>
-      <path d="M12 8v8M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"></path>
-    </symbol>
-    <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-    </symbol>
-    <symbol id="icon-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-4.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2z"></path>
-      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-4.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2z"></path>
-    </symbol>
-    <symbol id="icon-chrome" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="4"></circle>
-      <line x1="21.17" y1="8" x2="12" y2="8"></line>
-      <line x1="3.95" y1="6.06" x2="8.54" y2="14"></line>
-      <line x1="10.88" y1="21.94" x2="15.46" y2="14"></line>
-    </symbol>
-    <symbol id="icon-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </symbol>
-    <symbol id="icon-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23"></line>
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-    </symbol>
-  </svg>
-
-  <!-- Navigation -->
-  <header>
-    <div class="container nav-container">
-      <a href="#" class="logo-group">
-        <svg class="logo-icon"><use href="#icon-pipeline"></use></svg>
-        <span class="logo-text">YouTube Pipeline</span>
-      </a>
-      <div class="nav-links">
-        <a href="#case-study" class="nav-link">Case Study</a>
-        <a href="#simulator" class="nav-link">Interactive Demo</a>
-        <a href="#features" class="nav-link">Features</a>
-        <span class="nav-badge">
-          <span class="nav-badge-dot"></span>
-          Local Node: Active
-        </span>
-        <a href="https://github.com" target="_blank" class="btn-cta" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-          <svg width="16" height="16" fill="currentColor"><use href="#icon-github"></use></svg>
-          GitHub Repo
-        </a>
-      </div>
-    </div>
-  </header>
-
-  <!-- Hero Section -->
-  <section class="hero">
-    <div class="container hero-grid">
-      <div class="hero-content">
-        <span class="hero-tag">AI & GTM Engineering Showcase</span>
-        <h1 class="hero-title">Local YouTube Knowledge Pipeline</h1>
-        <p class="hero-subtitle">
-          How I built a hybrid, local-first transcript scraping & synthesis tool to bypass YouTube's cloud IP blocking, automate structured market intelligence, and feed my personal wiki.
-        </p>
-        <div class="hero-actions">
-          <a href="#simulator" class="btn-primary-large">Try Interactive Simulator</a>
-          <a href="#case-study" class="btn-secondary">Read Case Study</a>
-        </div>
-      </div>
-      
-      <!-- Video Container Mockup -->
-      <div class="video-mockup" id="videoContainer">
-        <video id="promoVideo" class="video-element" preload="metadata">
-          <source src="final-promo.mp4" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <div class="video-overlay" id="videoOverlay">
-          <div class="play-button">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-          <span class="video-overlay-text">Watch Project Explainer Video</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Strategic Showcase Case Study -->
-  <section class="case-study" id="case-study">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">Engineering Case Study</span>
-        <h2 class="section-title">The Product Builder's Perspective</h2>
-        <p class="section-desc">
-          Building a growth-marketing tool is more than putting APIs together. It requires understanding low-level constraints, network challenges, and architecting systems that run reliably.
-        </p>
-      </div>
-
-      <div class="case-study-grid">
-        <div class="case-study-content">
-          <!-- Block 1 -->
-          <div class="case-block">
-            <div class="case-icon-wrapper">
-              <svg><use href="#icon-shield"></use></svg>
+<body class="font-body">
+<!-- Global Nav -->
+<nav class="w-full top-0 sticky z-50 bg-surface dark:bg-background border-b border-hairline dark:border-on-surface-variant">
+<div class="flex justify-between items-center px-margin-desktop py-sm max-w-full mx-auto">
+<div class="font-product-display text-body-lg font-bold text-primary dark:text-on-background">
+                YouTube Pipeline
             </div>
-            <div>
-              <h3 class="case-block-title">The Challenge: Bypassing YouTube's Aggressive IP Blocks</h3>
-              <p class="case-block-text">
-                YouTube aggressively blocks cloud hosting providers (AWS, GCP, DigitalOcean, Cloudflare) when retrieving transcripts, leading to instant HTTP 403 errors or captcha challenges. Cloud-native scrapers fail quickly. To solve this, I designed a hybrid execution model: ingestion sits in the cloud, but transcript scraping executes on my local residential IP, bypassing blocks natively.
-              </p>
-            </div>
-          </div>
-
-          <!-- Block 2 -->
-          <div class="case-block">
-            <div class="case-icon-wrapper">
-              <svg><use href="#icon-cpu"></use></svg>
-            </div>
-            <div>
-              <h3 class="case-block-title">The Architecture: Hybrid Cloud & Local Docker Sync</h3>
-              <p class="case-block-text">
-                A public Cloudflare Worker receives YouTube PubSubHubbub webhooks whenever a tracked channel publishes. It logs metadata in Cloudflare KV. A lightweight local node (running in Docker on a residential IP) uses **Trigger.dev v3** to subscribe to the task queue, pull down the transcript locally, call Google Gemini, and push the synthesis downstream.
-              </p>
-            </div>
-          </div>
-
-          <!-- Block 3 -->
-          <div class="case-block">
-            <div class="case-icon-wrapper">
-              <svg><use href="#icon-brain"></use></svg>
-            </div>
-            <div>
-              <h3 class="case-block-title">GTM Automation: Category-Specific Prompt Synthesis</h3>
-              <p class="case-block-text">
-                Not all content is equal. A technical tutorial needs step-by-step SOP extraction, whereas a business strategy video requires macroeconomic frameworks. I built a dynamic classification system in Hono that automatically categorizes incoming channels (Tactical, Ideation, Strategy, PKM) and feeds the transcript to Gemini with custom-tailored prompt templates.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sidebar Biography / Recruiter Widget -->
-        <div class="profile-card">
-          <div class="profile-header">
-            <div class="profile-avatar">NB</div>
-            <div>
-              <h4 class="profile-name">Nico</h4>
-              <span class="profile-title">AI & GTM Engineer</span>
-            </div>
-          </div>
-          <p class="profile-bio">
-            I specialize in designing and engineering autonomous systems, growth tooling, and developer integrations. I build custom pipelines that solve real-world problems.
-          </p>
-          <div class="spec-list">
-            <div class="spec-item">
-              <span class="spec-label">Core Focus</span>
-              <span class="spec-val">AI/GTM Automation</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">Favorite Stack</span>
-              <span class="spec-val">TS / Hono / Workers</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">Orchestration</span>
-              <span class="spec-val">Trigger.dev / Docker</span>
-            </div>
-            <div class="spec-item">
-              <span class="spec-label">AI Integration</span>
-              <span class="spec-val">Google Gemini API</span>
-            </div>
-          </div>
-          <a href="mailto:hiring@example.com" class="btn-contact">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            Let's Collaborate
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Interactive Pipeline Simulator -->
-  <section class="case-study" id="simulator" style="background: rgba(14, 15, 17, 0.3); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">Interactive Simulation</span>
-        <h2 class="section-title">The Local-First Orchestration Flow</h2>
-        <p class="section-desc">
-          Click through the steps below to trigger a simulated pipeline run. Watch how data routes from YouTube's pub-sub system through Cloudflare, executes in Docker locally, calls Gemini, and delivers findings.
-        </p>
-      </div>
-
-      <div class="simulator-container">
-        <!-- Simulator Steps Controller -->
-        <div class="sim-controller">
-          <div>
-            <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">Pipeline Steps</h3>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Follow the data journey from ingestion to delivery.</p>
-            
-            <div class="sim-steps">
-              <button class="sim-step-btn active" data-step="1">
-                <span class="sim-step-num">01</span>
-                <div>
-                  <h4 class="sim-step-title">Ingestion Layer</h4>
-                  <p class="sim-step-desc">CF Worker captures PubSub webhook.</p>
-                </div>
-              </button>
-              
-              <button class="sim-step-btn" data-step="2">
-                <span class="sim-step-num">02</span>
-                <div>
-                  <h4 class="sim-step-title">Review Queue</h4>
-                  <p class="sim-step-desc">Extension prompts human-in-the-loop.</p>
-                </div>
-              </button>
-              
-              <button class="sim-step-btn" data-step="3">
-                <span class="sim-step-num">03</span>
-                <div>
-                  <h4 class="sim-step-title">Local Docker Scraping</h4>
-                  <p class="sim-step-desc">Scrapes transcripts via residential IP.</p>
-                </div>
-              </button>
-              
-              <button class="sim-step-btn" data-step="4">
-                <span class="sim-step-num">04</span>
-                <div>
-                  <h4 class="sim-step-title">Gemini Structuring</h4>
-                  <p class="sim-step-desc">Tailored prompt categorizes & synthesizes.</p>
-                </div>
-              </button>
-              
-              <button class="sim-step-btn" data-step="5">
-                <span class="sim-step-num">05</span>
-                <div>
-                  <h4 class="sim-step-title">Telegram Delivery</h4>
-                  <p class="sim-step-desc">Markdown sent directly to devices.</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div class="sim-nav">
-            <button class="btn-secondary" id="simPrev" style="padding: 0.5rem 1rem; font-size: 0.85rem;" disabled>
-              Previous
-            </button>
-            <button class="btn-cta" id="simNext" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-              Next Step
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- Simulator Display Panel -->
-        <div class="sim-output">
-          <div class="sim-screen-header">
-            <div class="sim-screen-title">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-              <span>Pipeline Environment</span>
-            </div>
-            <div class="sim-tab-dots">
-              <span class="sim-dot red"></span>
-              <span class="sim-dot yellow"></span>
-              <span class="sim-dot green"></span>
-            </div>
-          </div>
-
-          <!-- Graphic Demo Display -->
-          <div class="visual-demo-area">
-            <!-- Step 1 Ingestion Graphic -->
-            <div class="demo-state active" data-step="1">
-              <div class="webhook-graphic">
-                <div class="flow-node">YouTube PubSub</div>
-                <div class="flow-arrow"></div>
-                <div class="flow-node highlight">CF Worker</div>
-                <div class="flow-arrow"></div>
-                <div class="flow-node">Cloudflare KV</div>
-              </div>
-            </div>
-
-            <!-- Step 2 Graphic -->
-            <div class="demo-state" data-step="2">
-              <div class="ext-popup-mock">
-                <div class="ext-header">
-                  <span>YouTube Pipeline</span>
-                  <span style="color:var(--green)">1 Video Pending</span>
-                </div>
-                <div class="ext-card-simulate">
-                  <div>
-                    <div style="font-weight:600; margin-bottom: 2px;">Building AI Agents...</div>
-                    <div style="color:var(--text-muted); font-size:9px;">Channel: DevMastery</div>
-                  </div>
-                  <button class="ext-btn-approve">Approve</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Step 3 Graphic -->
-            <div class="demo-state" data-step="3">
-              <div class="docker-container-visual">
-                <div class="docker-icon-box">
-                  <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24"><path d="M13.983 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M11.261 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186h-2.119c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M11.261 8.356h2.119c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185h-2.119c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M8.539 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.084-.186-.186-.186H8.539c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M8.539 8.356h2.119c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185H8.539c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M5.817 11.078h2.119c.102 0 .186-.084.186-.186V8.775c0-.102-.083-.186-.186-.186H5.817c-.102 0-.186.084-.186.186v2.118c0 .101.084.185.186.185M2.84 8.356h2.118c.102 0 .186-.083.186-.185V6.052c0-.102-.084-.185-.186-.185H2.84c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185m11.143-5.438h2.119c.102 0 .186-.083.186-.185V.614c0-.102-.084-.185-.186-.185h-2.119c-.102 0-.186.083-.186.185v2.119c0 .102.084.185.186.185M22.062 10h-2.298c-.5.011-1 .216-1.393.573-.393-.357-.894-.562-1.393-.573H2.046c-.545.012-1.054.29-1.316.732-.26.44-.253.977.02 1.411C2.18 14.43 4.29 17.5 7 17.5c2.43 0 4.39-2.42 5-5 .61 2.58 2.57 5 5 5 2.71 0 4.82-3.07 6.25-5.355.273-.434.28-.971.02-1.411C23.007 10.29 22.5 10.012 22.062 10z"/></svg>
-                </div>
-                <div class="docker-status-text">
-                  <div style="font-weight: 700;">Local Residential Node</div>
-                  <div class="docker-status-badge">Container: Active</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Step 4 Graphic -->
-            <div class="demo-state" data-step="4">
-              <div class="gemini-model-visual">
-                <span class="prompt-pill">Template: Tactical</span>
-                <div class="gemini-stars-box">
-                  <span class="gemini-sparkle">✦</span>
-                </div>
-                <span class="prompt-pill">Model: Gemini 3.5</span>
-              </div>
-            </div>
-
-            <!-- Step 5 Graphic -->
-            <div class="demo-state" data-step="5">
-              <div class="tg-digest-visual">
-                <svg class="telegram-icon" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.24.37-.49 1.02-.75 3.99-1.74 6.66-2.88 8.01-3.43 3.81-1.56 4.6-.18 4.4 1.15z"/></svg>
-                <div class="telegram-bubble">
-                  <strong>Task dQw4w9WgXcQ Completed!</strong><br>
-                  Structured Markdown summary dispatched to chat.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Virtual Console Terminal -->
-          <div class="virtual-terminal" id="terminalConsole">
-            <!-- Filled dynamically by JavaScript -->
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Key Product Features Grid -->
-  <section class="case-study" id="features">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">Feature Set</span>
-        <h2 class="section-title">Fully Integrated Solutions</h2>
-        <p class="section-desc">
-          Building a robust automation requires thinking about all states of the project, from cost control to data integration.
-        </p>
-      </div>
-
-      <div class="features-grid">
-        <!-- Feature 1 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-network"></use></svg>
-          <h3 class="feature-title">Autopilot Ingestion</h3>
-          <p class="feature-desc">
-            A standalone Cloudflare Worker registers to YouTube PubSubHubbub hub endpoints. New video alerts are ingested asynchronously via webhooks, with state locked safely in Cloudflare KV store.
-          </p>
-        </div>
-
-        <!-- Feature 2 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-chrome"></use></svg>
-          <h3 class="feature-title">Chrome Extension UI</h3>
-          <p class="feature-desc">
-            Built using Manifest V3 guidelines. Serves as a local panel dashboard allowing users to filter categories, review the queue, configure prompts, and inspect processing logs instantly.
-          </p>
-        </div>
-
-        <!-- Feature 3 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-brain"></use></svg>
-          <h3 class="feature-title">Category-Specific Prompts</h3>
-          <p class="feature-desc">
-            Classifies videos into distinct categories (Ideation, Strategy, PKM, news, etc.) and routes transcript data through tailored LLM instructions for hyper-relevant action extraction.
-          </p>
-        </div>
-
-        <!-- Feature 4 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-dollar"></use></svg>
-          <h3 class="feature-title">Zero-Cost Infrastructure</h3>
-          <p class="feature-desc">
-            Orchestration runs on local Docker, synthesis uses the Gemini free-tier quota, and ingestion lives on Cloudflare's free tier. Run a fully automated knowledge center for $0/month.
-          </p>
-        </div>
-
-        <!-- Feature 5 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-pipeline"></use></svg>
-          <h3 class="feature-title">Markdown / Obsidian Sync</h3>
-          <p class="feature-desc">
-            All synthesized files are dispatched formatted in clean, clean Markdown. Perfect to drop directly into Obsidian or Logseq to automatically compile an interlinked personal knowledge graph.
-          </p>
-        </div>
-
-        <!-- Feature 6 -->
-        <div class="feature-card">
-          <div class="feature-card-glow"></div>
-          <svg class="feature-icon"><use href="#icon-message"></use></svg>
-          <h3 class="feature-title">Telegram & Digest Emails</h3>
-          <p class="feature-desc">
-            Instant updates on the go. Summaries push automatically as rich documents to Telegram, and email daily digests summarize key knowledge topics so you never miss anything.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Technical Specs Banner -->
-  <section class="container">
-    <div class="specs-banner">
-      <h3 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem;">Pipeline Technical Performance</h3>
-      <div class="specs-grid">
-        <div>
-          <div class="spec-stat">~5.2s</div>
-          <div class="spec-stat-desc">Execution Speed</div>
-        </div>
-        <div>
-          <div class="spec-stat">$0.00</div>
-          <div class="spec-stat-desc">Server Cost</div>
-        </div>
-        <div>
-          <div class="spec-stat">100%</div>
-          <div class="spec-stat-desc">IP Blocks Bypassed</div>
-        </div>
-        <div>
-          <div class="spec-stat">10+ hrs</div>
-          <div class="spec-stat-desc">Time Saved / Wk</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer>
-    <div class="container footer-grid">
-      <div class="footer-copy">
-        <svg fill="currentColor" viewBox="0 0 24 24" width="20" height="20"><use href="#icon-pipeline"></use></svg>
-        <span>&copy; Nico — Portfolio Showcase Project. Built with AI.</span>
-      </div>
-      <div class="footer-links">
-        <a href="#case-study" class="footer-link">Case Study</a>
-        <a href="#simulator" class="footer-link">Simulator</a>
-        <a href="https://github.com" class="footer-link" target="_blank">GitHub</a>
-      </div>
-    </div>
-  </footer>
-
-  <script src="app.js"></script>
-</body>
-</html>
+<div class="hidden md:flex gap-gutter items-center">
+<a class="font-button text-button text-primary dark:text-on-background border-b-2 border-primary pb-1 duration-200 ease-in-out" href="#">Pipeline</a>
+<a class="font-button text-button text-secondary dark:text-on-surface-variant hover:text-primary dark:hover:text-on-background transition-colors duration-200 ease-in-out" href="#">Research</a>
+<a class="font-button text-button text-secondary dark:text-on-surface-variant hover:text-primary dark:hover:text-on-background transition-colors duration-200 ease-in-out" href="#">Docs</a>
+<a class="font-button text-button text-secondary dark:text-on-surface-variant hover:text-primary dark:hover:text-on-background transition-colors duration-200 ease-in-out" href="#">Enterprise</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="font-button text-button text-secondary dark:text-on-surface-variant hover:text-primary transition-colors">Log In</button>
+<button class="bg-primary text-on-primary font-button px-sm py-[10px] rounded-full hover:opacity-90 transition-opacity">Get Started</button>
+</div>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="bg-canvas-white pt-xl pb-xxl px-margin-desktop">
+<div class="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-xl items-center">
+<div>
+<span class="font-mono-label text-mono-label uppercase text-coral mb-sm block">AI &amp; GTM ENGINEERING SHOWCASE</span>
+<h1 class="font-hero-display text-hero-display text-balanced mb-md leading-[1] text-primary">
+                    Local YouTube Knowledge Pipeline
+                </h1>
+<p class="font-body-lg text-body-lg text-secondary max-w-xl mb-xl">
+                    A hybrid, local-first system that bypasses cloud IP blocking to scrape, synthesize, and pipe YouTube transcript data into your personal knowledge base with $0 server costs.
+                </p>
+<div class="flex flex-wrap gap-md items-center">
+<button class="bg-primary text-on-primary font-button px-xl py-[16px] rounded-full text-lg hover:opacity-90 transition-all">
+                        Try Interactive Simulator
+                    </button>
+<a class="font-button text-button text-primary underline underline-offset-4 hover:text-coral transition-colors" href="#">
+                        Read Case Study
+                    </a>
+</div>
+</div>
+<div class="relative">
+<!-- Media Lift Radius 22px -->
+<div class="bg-soft-stone rounded-[22px] p-md aspect-video overflow-hidden relative group">
+<img alt="System Preview" class="w-full h-full object-cover rounded-[16px] filter grayscale opacity-80" data-alt="A sophisticated dark mode video interface with technical data overlays and waveforms on a deep slate gray screen. The aesthetic is clean and industrial with subtle cyan glowing accents representing data flow. Professional engineering workspace environment with soft focus studio lighting." src="system-preview.jpg"/>
+<div class="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-all">
+<span class="material-symbols-outlined text-[64px] text-white">play_circle</span>
+</div>
+</div>
+<!-- Agent Console Card Overlay -->
+<div class="absolute -bottom-10 -left-10 bg-primary-container text-on-primary p-sm rounded-xl border border-white/10 shadow-lg min-w-[240px]">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-3 h-3 rounded-full bg-[#4ade80] animate-pulse"></div>
+<span class="font-mono-label text-micro uppercase tracking-wider">Local Node: Active</span>
+</div>
+<div class="font-mono-label text-xs opacity-60">
+                        Thread ID: [PIPELINE_LOCAL_01]
+                    </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust Strip -->
+<section class="py-xl border-y border-hairline">
+<div class="max-w-full px-margin-desktop mx-auto">
+<div class="flex flex-wrap justify-between items-center opacity-40 gap-xl grayscale">
+<span class="font-mono-label text-mono-label font-bold text-primary">YOUTUBE</span>
+<span class="font-mono-label text-mono-label font-bold text-primary">CLOUDFLARE</span>
+<span class="font-mono-label text-mono-label font-bold text-primary">DOCKER</span>
+<span class="font-mono-label text-mono-label font-bold text-primary">GEMINI AI</span>
+<span class="font-mono-label text-mono-label font-bold text-primary">TELEGRAM</span>
+</div>
+</div>
+</section>
+<!-- Problem/Solution Section -->
+<section class="py-xxl px-margin-desktop bg-surface-container-low">
+<div class="max-w-[1400px] mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-xl items-center">
+<div>
+<span class="font-mono-label text-mono-label uppercase text-secondary mb-xs block">Engineering Case Study</span>
+<h2 class="font-section-heading text-section-heading mb-xl text-primary">The Product Builder's Perspective</h2>
+<div class="space-y-xl">
+<div class="border-l-2 border-coral pl-md">
+<h3 class="font-feature-heading text-feature-heading mb-sm">Bypassing Aggressive IP Blocks</h3>
+<p class="font-body text-body text-secondary">
+                                YouTube aggressively limits cloud hosting providers. To solve this, I engineered a hybrid execution model: ingestion sits in the cloud, while scraping executes on a local residential IP node, simulating authentic traffic patterns.
+                            </p>
+</div>
+<div class="border-l-2 border-hairline pl-md">
+<h3 class="font-feature-heading text-feature-heading mb-sm">Architecture: Hybrid Docker Sync</h3>
+<p class="font-body text-body text-secondary">
+                                Lightweight local nodes running in Docker containers subscribe to task queues via Webhooks. This ensures reliability without the overhead of massive VM clusters.
+                            </p>
+</div>
+</div>
+</div>
+<div class="bg-primary-container p-xl rounded-[16px] text-on-primary">
+<div class="flex items-center gap-md mb-xl">
+<div class="w-16 h-16 rounded-full bg-surface/10 flex items-center justify-center border border-white/20">
+<span class="material-symbols-outlined text-4xl">face</span>
+</div>
+<div>
+<div class="font-section-display text-[24px] font-bold">Nico</div>
+<div class="font-mono-label text-micro uppercase text-coral">AI &amp; GTM Engineer</div>
+</div>
+</div>
+<div class="space-y-md font-mono-label text-sm mb-xl">
+<div class="flex justify-between border-b border-white/10 pb-xs">
+<span class="opacity-60">Stack Focus</span>
+<span>AI/GTM Automation</span>
+</div>
+<div class="flex justify-between border-b border-white/10 pb-xs">
+<span class="opacity-60">Favorite SDK</span>
+<span>TS / Hono / Workers</span>
+</div>
+<div class="flex justify-between border-b border-white/10 pb-xs">
+<span class="opacity-60">Status</span>
+<span class="text-[#4ade80]">Ready for Collab</span>
+</div>
+</div>
+<button class="w-full bg-canvas-white text-primary font-button py-sm rounded-full hover:bg-soft-stone transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-sm">mail</span>
+                        Let's Collaborate
+                    </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Flow Section -->
+<section class="py-xxl px-margin-desktop bg-canvas-white">
+<div class="max-w-[1400px] mx-auto">
+<div class="text-center mb-xxl">
+<span class="font-mono-label text-mono-label uppercase text-secondary mb-xs block">Interactive Simulation</span>
+<h2 class="font-section-heading text-section-heading text-primary">The Local-First Orchestration Flow</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-md">
+<!-- Step 1 -->
+<div class="p-md border border-hairline rounded-xl hover:border-coral transition-colors group">
+<div class="font-mono-label text-coral mb-md text-xl">01</div>
+<h4 class="font-feature-heading text-[18px] mb-xs">Ingestion Layer</h4>
+<p class="font-body text-xs text-secondary opacity-0 group-hover:opacity-100 transition-opacity">CF Worker captures PubSub webhook.</p>
+</div>
+<!-- Step 2 -->
+<div class="p-md border border-hairline rounded-xl hover:border-coral transition-colors group">
+<div class="font-mono-label text-coral mb-md text-xl">02</div>
+<h4 class="font-feature-heading text-[18px] mb-xs">Review Queue</h4>
+<p class="font-body text-xs text-secondary opacity-0 group-hover:opacity-100 transition-opacity">Extension prompts human-in-the-loop validation.</p>
+</div>
+<!-- Step 3 -->
+<div class="p-md border border-coral bg-coral/5 rounded-xl transition-colors">
+<div class="font-mono-label text-coral mb-md text-xl">03</div>
+<h4 class="font-feature-heading text-[18px] mb-xs">Local Scraping</h4>
+<p class="font-body text-xs text-secondary">Residential IP node executes secure extraction.</p>
+</div>
+<!-- Step 4 -->
+<div class="p-md border border-hairline rounded-xl hover:border-coral transition-colors group">
+<div class="font-mono-label text-coral mb-md text-xl">04</div>
+<h4 class="font-feature-heading text-[18px] mb-xs">LLM Structuring</h4>
+<p class="font-body text-xs text-secondary opacity-0 group-hover:opacity-100 transition-opacity">Gemini AI synthesizes and categorizes transcript.</p>
+</div>
+<!-- Step 5 -->
+<div class="p-md border border-hairline rounded-xl hover:border-coral transition-colors group">
+<div class="font-mono-label text-coral mb-md text-xl">05</div>
+<h4 class="font-feature-heading text-[18px] mb-xs">Knowledge Sync</h4>
+<p class="font-body text-xs text-secondary opacity-0 group-hover:opacity-100 transition-opacity">Markdown files pushed to Obsidian/Telegram.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Feature Grid -->
+<section class="py-xxl px-margin-desktop bg-soft-stone">
+<div class="max-w-[1400px] mx-auto">
+<div class="mb-xl">
+<span class="font-mono-label text-mono-label uppercase text-secondary mb-xs block">Feature Set</span>
+<h2 class="font-section-heading text-section-heading text-primary">Fully Integrated Solutions</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Card 1 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">hub</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Autopilot Ingestion</h3>
+<p class="font-body text-body text-secondary">Zero-latency webhook listeners on the edge, handling thousands of concurrent channel updates.</p>
+</div>
+<!-- Card 2 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">chrome_reader_mode</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Chrome Extension UI</h3>
+<p class="font-body text-body text-secondary">A custom dashboard to manage your ingestion queue directly from the browser window.</p>
+</div>
+<!-- Card 3 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">terminal</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Category-Specific Prompts</h3>
+<p class="font-body text-body text-secondary">Dynamic prompt templates that adapt based on the video niche (Tech, Philosophy, Gaming).</p>
+</div>
+<!-- Card 4 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">savings</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Zero-Cost Infrastructure</h3>
+<p class="font-body text-body text-secondary">Utilizing free-tier cloud resources and existing local hardware for 100% margin operation.</p>
+</div>
+<!-- Card 5 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">auto_stories</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Obsidian Sync</h3>
+<p class="font-body text-body text-secondary">Automatic generation of clean Markdown files with bi-directional links for your PKM.</p>
+</div>
+<!-- Card 6 -->
+<div class="bg-canvas-white p-xl rounded-xl border border-hairline hover:border-primary transition-all">
+<span class="material-symbols-outlined text-coral text-4xl mb-md">send</span>
+<h3 class="font-card-heading text-feature-heading mb-sm">Telegram Digests</h3>
+<p class="font-body text-body text-secondary">Daily summaries of processed insights delivered as a clean message to your mobile device.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Performance Stats -->
+<section class="py-xxl bg-primary-container text-on-primary px-margin-desktop overflow-hidden relative">
+<div class="max-w-[1400px] mx-auto text-center">
+<h2 class="font-mono-label text-mono-label uppercase tracking-widest text-coral mb-xl">Pipeline Technical Performance</h2>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-xl">
+<div>
+<div class="font-hero-display text-[80px] leading-none mb-xs">~5.2s</div>
+<div class="font-mono-label text-micro uppercase opacity-60">EXECUTION SPEED</div>
+</div>
+<div>
+<div class="font-hero-display text-[80px] leading-none mb-xs">$0.00</div>
+<div class="font-mono-label text-micro uppercase opacity-60">SERVER COST</div>
+</div>
+<div>
+<div class="font-hero-display text-[80px] leading-none mb-xs">100%</div>
+<div class="font-mono-label text-micro uppercase opacity-60">IP BLOCKS BYPASSED</div>
+</div>
+<div>
+<div class="font-hero-display text-[80px] leading-none mb-xs">10+ hrs</div>
+<div class="font-mono-label text-micro uppercase opacity-60">TIME SAVED / WK</div>
+</div>
+</div>
+</div>
+<!-- Technical decoration background element -->
+<div class="absolute top-0 right-0 w-1/2 h-full opacity-5 pointer-events-none select-none">
+<span class="material-symbols-outlined text-[600px] translate-x-1/2 -translate-y-1/4">code</span>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-enterprise-green text-on-primary pt-xxl pb-xl px-margin-desktop">
+<div class="max-w-[1400px] mx-auto">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-xl border-b border-white/10 pb-xxl mb-xl">
+<div class="md:col-span-5">
+<h3 class="font-section-heading text-[40px] leading-tight mb-md">AI moves fast. <br/><span class="text-coral">Stay optimized.</span></h3>
+<p class="font-body text-body-lg text-white/60 mb-xl max-w-sm">Join the engineering list for insights on local-first AI and GTM automation architecture.</p>
+<form class="flex max-w-md bg-white/10 rounded-full p-xxs border border-white/20">
+<input class="bg-transparent border-none focus:ring-0 text-on-primary flex-grow px-md py-sm" placeholder="Email address" type="email"/>
+<button class="bg-coral text-primary font-button px-xl py-sm rounded-full hover:bg-white transition-colors">Join</button>
+</form>
+</div>
+<div class="md:col-span-2 md:col-start-8">
+<h4 class="font-mono-label text-micro uppercase opacity-40 mb-md">Explore</h4>
+<ul class="space-y-sm font-button text-button">
+<li><a class="hover:text-coral transition-colors" href="#">Case Study</a></li>
+<li><a class="hover:text-coral transition-colors" href="#">Simulator</a></li>
+<li><a class="hover:text-coral transition-colors" href="#">Features</a></li>
+<li><a class="hover:text-coral transition-colors" href="#">Technical Docs</a></li>
+</ul>
+</div>
+<div class="md:col-span-2">
+<h4 class="font-mono-label text-micro uppercase opacity-40 mb-md">System</h4>
+<ul class="space-y-sm font-button text-button">
+<li><a class="hover:text-coral transition-colors" href="#">GitHub Repo</a></li>
+<li><a class="hover:text-coral transition-colors" href="#">Status</a></li>
+<li><a class="hover:text-coral transition-colors" href="#">Security</a></li>
+</ul>
+</div>
+</div>
+<div class="flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="font-product-display text-card-heading text-on-primary">YouTube Pipeline</div>
+<div class="font-body text-body text-white/40">© 2024 YouTube Pipeline. All rights reserved. Portfolio Showcase Project.</div>
+<div class="flex gap-md opacity-40 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">terminal</span>
+<span class="material-symbols-outlined">data_object</span>
+<span class="material-symbols-outlined">cloud_done</span>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for the step-based flow
+        const cards = document.querySelectorAll('.group');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.classList.add('scale-[1.02]');
+            });
+            card.addEventListener('mouseleave', () => {
+                card.classList.remove('scale-[1.02]');
+            });
+        });
+    </script>
+</body></html>
