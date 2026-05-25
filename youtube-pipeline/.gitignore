@@ -8,3 +8,18 @@ node_modules/
 dist/
 renders/
 *.log
+
+# Media assets
+*.mp4
+*.wav
+*.mp3
+
+# Backups and temp files
+*.bak
+*.tmp
+*~
+
+# Python virtual environments
+venv/
+ENV/
+env/

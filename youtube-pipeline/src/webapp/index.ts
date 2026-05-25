@@ -18,7 +18,13 @@ const app = new Hono()
 
 // Enable CORS for Chrome Extension requests
 app.use('/api/extension/*', cors({
-    origin: '*',
+    origin: (origin) => {
+        if (!origin) return 'http://localhost:3000'
+        if (origin.startsWith('chrome-extension://') || origin.startsWith('http://localhost:')) {
+            return origin
+        }
+        return 'http://localhost:3000'
+    },
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }))
@@ -364,9 +370,11 @@ app.post('/api/extension/categorisation-prompt', async (c) => {
 app.use('/*', serveStatic({ root: './landing-page' }))
 
 const port = 3000
-console.log(`Extension Server is running on http://localhost:${port}`)
+const hostname = '127.0.0.1'
+console.log(`Extension Server is running on http://${hostname}:${port}`)
 
 serve({
     fetch: app.fetch,
-    port
+    port,
+    hostname
 })

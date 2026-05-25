@@ -3,3 +3,21 @@ node_modules
 .DS_Store
 .trigger
 dist
+
+# Secrets and environment files
+.env
+.env.*
+
+# Python virtual environments
+.venv
+venv
+ENV
+env
+
+# Media assets and renders
+*.mp4
+*.wav
+*.mp3
+renders/
+**/.thumbnails/
+**/.waveform-cache/
